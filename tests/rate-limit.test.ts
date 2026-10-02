@@ -29,4 +29,15 @@ describe("rate limiter", () => {
     assert.ok(rl.hit("b", RULE).allowed);
     assert.ok(rl.hit("a", { ...RULE, name: "other" }).allowed);
   });
+
+  it("a sweep triggered by a short-window rule does not reset a long-window counter", () => {
+    let t = 0;
+    const rl = createRateLimiter(() => t);
+    const long = { name: "long", max: 1, windowMs: 600_000 };
+    rl.hit("victim", long);
+    for (let i = 0; i < 5100; i++) rl.hit(`k${i}`, { name: "short", max: 5, windowMs: 1000 });
+    t = 2000; // past the short window, well inside the long one
+    rl.hit("trigger", { name: "short", max: 5, windowMs: 1000 }); // a new short-window entry runs the sweep
+    assert.equal(rl.hit("victim", long).allowed, false);
+  });
 });

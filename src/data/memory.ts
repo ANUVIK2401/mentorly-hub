@@ -314,6 +314,10 @@ export function createMemoryRepository(seed: SeedData, now: () => Date = () => n
       const cohort = cohortsById.get(input.cohortId);
       if (!cohort) return { ok: false, code: "cohort_not_found", message: "That cohort does not exist." };
 
+      if (projectsById.get(cohort.projectId)?.status !== "published") {
+        return { ok: false, code: "cohort_not_found", message: "That cohort does not exist." };
+      }
+
       const view = cohortView(cohort);
       if (view.status !== "open") {
         return { ok: false, code: "not_open", message: notOpenMessage(view.status, cohort.applicationDeadline) };
@@ -492,6 +496,8 @@ export function createMemoryRepository(seed: SeedData, now: () => Date = () => n
       if (input.id && !existing) return { ok: false, fieldErrors: {}, message: "That project no longer exists." };
 
       const fieldErrors: Record<string, string> = {};
+      const reserved = input.skillNames.find((n) => industries.has(slugify(n)));
+      if (reserved) fieldErrors.skillNames = `"${reserved}" is an industry name. Use a more specific skill name.`;
       const clash = projectsBySlug.get(input.slug);
       if (clash && clash.id !== input.id) fieldErrors.slug = "Another project already uses this slug.";
       const instructor = instructorsById.get(input.instructorId);
@@ -549,6 +555,9 @@ export function createMemoryRepository(seed: SeedData, now: () => Date = () => n
       const existing = input.id ? cohortsById.get(input.id) : undefined;
       if (input.id && !existing) return { ok: false, fieldErrors: {}, message: "That cohort no longer exists." };
       if (!projectsById.has(input.projectId)) return { ok: false, fieldErrors: {}, message: "That project does not exist." };
+      if (existing && existing.projectId !== input.projectId) {
+        return { ok: false, fieldErrors: {}, message: "That cohort belongs to a different project." };
+      }
 
       const fieldErrors = cohortRuleErrors(input, existing ? (seatsTaken.get(existing.id) ?? 0) : 0);
       if (Object.keys(fieldErrors).length) return { ok: false, fieldErrors };

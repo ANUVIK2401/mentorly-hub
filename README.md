@@ -56,7 +56,7 @@ npm run db:migrate                # applies /drizzle
 npm run db:seed                   # loads the synthetic catalog (SEED_COUNT, default 240)
 ```
 
-The seed's cohort dates are relative to the day you seed. Re-run `npm run db:seed -- --reset` whenever the demo's cohorts have aged out (it refuses `--reset` under `NODE_ENV=production` without `--yes-really`). Without `DATABASE_URL` the app runs on memory and needs none of this.
+The seed's cohort dates are relative to the day you seed. Re-run `npm run db:seed -- --reset --yes-really` whenever the demo's cohorts have aged out. **`--reset` deletes all data in that database**, including real applications, so it always requires `--yes-really`. Without `DATABASE_URL` the app runs on memory and needs none of this.
 
 `TEST_DATABASE_URL=postgres://... npm test` additionally runs a concurrency test against a real server (it wipes that database).
 

@@ -1,9 +1,11 @@
 /**
- * npm run db:seed [-- --reset [--yes-really]]
+ * npm run db:seed [-- --reset --yes-really]
  *
  * Loads the synthetic catalog into the database named by DATABASE_URL (SEED_COUNT projects, default 240).
- * Refuses to run on a non-empty database. --reset wipes the seeded tables first, and in production it
- * also needs --yes-really. Re-run it with --reset whenever the demo's cohort dates have aged out.
+ * Refuses to run on a non-empty database. --reset WIPES every table (including real applications) and
+ * always needs --yes-really, because running this from a laptop against a production URL looks the same
+ * as running it locally (NODE_ENV is unset). Re-run with --reset --yes-really whenever the demo's
+ * cohort dates have aged out.
  */
 import { sql } from "drizzle-orm";
 import { createDb } from "../src/db/client";
@@ -16,8 +18,9 @@ if (!url) {
   process.exit(1);
 }
 const reset = process.argv.includes("--reset");
-if (reset && process.env.NODE_ENV === "production" && !process.argv.includes("--yes-really")) {
-  console.error("Refusing --reset with NODE_ENV=production without --yes-really");
+if (reset && !process.argv.includes("--yes-really")) {
+  const host = new URL(url).host;
+  console.error(`--reset deletes ALL data in ${host}. Re-run with --reset --yes-really if that is what you want.`);
   process.exit(1);
 }
 

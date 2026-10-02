@@ -31,7 +31,8 @@ function contentSecurityPolicy(nonce: string): string {
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (pathname.startsWith("/admin") && pathname !== "/admin/login" && !request.cookies.has(ADMIN_COOKIE)) {
+  const inAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
+  if (inAdmin && pathname !== "/admin/login" && !request.cookies.has(ADMIN_COOKIE)) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin/login";
     url.search = "";

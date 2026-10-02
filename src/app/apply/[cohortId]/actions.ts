@@ -23,15 +23,6 @@ export async function submitApplication(_prev: ApplyState, formData: FormData): 
     return { status: "error", formError: "Something went wrong. Please try again.", fieldErrors: {}, values };
   }
 
-  if (!(await limitByClient(APPLY_RULE)).allowed) {
-    return {
-      status: "error",
-      formError: "Too many applications from your network. Please wait a few minutes and try again.",
-      fieldErrors: {},
-      values,
-    };
-  }
-
   const parsed = applicationSchema.safeParse({ cohortId, ...values });
   if (!parsed.success) {
     const fieldErrors: Partial<Record<keyof ApplicationFormValues, string>> = {};
@@ -43,6 +34,16 @@ export async function submitApplication(_prev: ApplyState, formData: FormData): 
       }
     }
     return { status: "error", fieldErrors, values };
+  }
+
+  // Counted only once the form is valid, so typos do not burn a shared campus IP's quota.
+  if (!(await limitByClient({ ...APPLY_RULE, name: `apply:${parsed.data.cohortId}` })).allowed) {
+    return {
+      status: "error",
+      formError: "Too many applications from your network. Please wait a few minutes and try again.",
+      fieldErrors: {},
+      values,
+    };
   }
 
   const { cohortId: cid, statement, ...student } = parsed.data;

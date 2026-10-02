@@ -137,7 +137,8 @@ export const students = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     name: text("name").notNull(),
-    email: text("email").notNull(), // store lower-cased
+    // Identity only: the first details seen for this email. Reviewers read the snapshot on `applications`.
+  email: text("email").notNull(), // store lower-cased
     school: text("school").notNull(),
     program: text("program").notNull(),
     graduationYear: integer("graduation_year").notNull(),
@@ -156,6 +157,13 @@ export const applications = pgTable(
     studentId: uuid("student_id")
       .notNull()
       .references(() => students.id, { onDelete: "cascade" }),
+    // Student details as submitted WITH this application. Never rewritten by later applications, so a
+    // second application (or someone submitting another person's email) cannot change what a reviewer sees.
+    studentName: text("student_name").notNull(),
+    studentEmail: text("student_email").notNull(), // lower-cased
+    studentSchool: text("student_school").notNull(),
+    studentProgram: text("student_program").notNull(),
+    studentGraduationYear: integer("student_graduation_year").notNull(),
     statement: text("statement").notNull(),
     resumeUrl: text("resume_url"),
     status: applicationStatusEnum("status").notNull().default("submitted"),

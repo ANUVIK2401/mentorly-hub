@@ -228,11 +228,11 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
         submittedAt: applications.submittedAt,
         status: applications.status,
         statement: applications.statement,
-        name: students.name,
-        email: students.email,
-        school: students.school,
-        program: students.program,
-        graduationYear: students.graduationYear,
+        name: applications.studentName,
+        email: applications.studentEmail,
+        school: applications.studentSchool,
+        program: applications.studentProgram,
+        graduationYear: applications.studentGraduationYear,
         cohortId: cohorts.id,
         cohortStart: cohorts.startDate,
         projectTitle: projects.title,
@@ -240,7 +240,6 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
         instructorName: instructors.name,
       })
       .from(applications)
-      .innerJoin(students, eq(students.id, applications.studentId))
       .innerJoin(cohorts, eq(cohorts.id, applications.cohortId))
       .innerJoin(projects, eq(projects.id, cohorts.projectId))
       .innerJoin(instructors, eq(instructors.id, projects.instructorId));
@@ -252,7 +251,12 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
     for (const t of termsOf(f.q)) {
       const like = likeTerm(t);
       conds.push(
-        or(ilike(students.name, like), ilike(students.email, like), ilike(students.school, like), ilike(projects.title, like))!,
+        or(
+          ilike(applications.studentName, like),
+          ilike(applications.studentEmail, like),
+          ilike(applications.studentSchool, like),
+          ilike(projects.title, like),
+        )!,
       );
     }
     return conds.length ? and(...conds) : undefined;
@@ -456,19 +460,23 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
             return { ok: false, code: "not_open", message: notOpenMessage(status, locked.cohort.applicationDeadline) };
           }
 
-          const [student] = await tx
+          const [project] = await tx
+            .select({ status: projects.status })
+            .from(projects)
+            .where(eq(projects.id, locked.cohort.projectId));
+          if (project?.status !== "published") {
+            return { ok: false, code: "cohort_not_found", message: "That cohort does not exist." };
+          }
+
+          // The students row is identity only (first details seen for this email) and is never updated:
+          // anyone can type any email into the public form, so it must not be able to rewrite earlier data.
+          const inserted = await tx
             .insert(students)
             .values({ ...input.student, email })
-            .onConflictDoUpdate({
-              target: students.email,
-              set: {
-                name: input.student.name,
-                school: input.student.school,
-                program: input.student.program,
-                graduationYear: input.student.graduationYear,
-              },
-            })
+            .onConflictDoNothing({ target: students.email })
             .returning({ id: students.id });
+          const student =
+            inserted[0] ?? (await tx.select({ id: students.id }).from(students).where(eq(students.email, email)))[0];
 
           // The cohort row is locked, so this check cannot race another application to the same cohort.
           const [existing] = await tx
@@ -480,7 +488,17 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
           const submittedAt = now();
           const [row] = await tx
             .insert(applications)
-            .values({ cohortId: input.cohortId, studentId: student.id, statement: input.statement, submittedAt })
+            .values({
+              cohortId: input.cohortId,
+              studentId: student.id,
+              studentName: input.student.name,
+              studentEmail: email,
+              studentSchool: input.student.school,
+              studentProgram: input.student.program,
+              studentGraduationYear: input.student.graduationYear,
+              statement: input.statement,
+              submittedAt,
+            })
             .returning({ id: applications.id });
           return {
             ok: true,
@@ -507,14 +525,13 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
           id: applications.id,
           status: applications.status,
           submittedAt: applications.submittedAt,
-          studentName: students.name,
+          studentName: applications.studentName,
           projectTitle: projects.title,
           projectSlug: projects.slug,
           cohortStart: cohorts.startDate,
           cohortEnd: cohorts.endDate,
         })
         .from(applications)
-        .innerJoin(students, eq(students.id, applications.studentId))
         .innerJoin(cohorts, eq(cohorts.id, applications.cohortId))
         .innerJoin(projects, eq(projects.id, cohorts.projectId))
         .where(eq(applications.id, id));
@@ -551,7 +568,6 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
       const [{ n: total }] = await db
         .select({ n: count() })
         .from(applications)
-        .innerJoin(students, eq(students.id, applications.studentId))
         .innerJoin(cohorts, eq(cohorts.id, applications.cohortId))
         .innerJoin(projects, eq(projects.id, cohorts.projectId))
         .where(where);
@@ -746,6 +762,17 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
           if (!industry) fieldErrors.industryId = "Choose an existing industry.";
           if (Object.keys(fieldErrors).length) return { ok: false, fieldErrors };
 
+          const industryIds = new Set(
+            (await tx.select({ id: tags.id }).from(tags).where(eq(tags.type, "industry"))).map((t) => t.id),
+          );
+          const reserved = input.skillNames.find((n) => industryIds.has(slugify(n)));
+          if (reserved) {
+            return {
+              ok: false,
+              fieldErrors: { skillNames: `"${reserved}" is an industry name. Use a more specific skill name.` },
+            };
+          }
+
           const skillIds: string[] = [];
           const skillRows: { id: string; name: string; type: "skill" }[] = [];
           for (const name of input.skillNames) {
@@ -816,6 +843,9 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
         if (input.id) {
           const locked = await lockCohort(tx, input.id); // block concurrent accepts while capacity changes
           if (!locked) return { ok: false, fieldErrors: {}, message: "That cohort no longer exists." };
+          if (locked.cohort.projectId !== input.projectId) {
+            return { ok: false, fieldErrors: {}, message: "That cohort belongs to a different project." };
+          }
           seats = locked.seatsTaken;
         }
         const fieldErrors = cohortRuleErrors(input, seats);

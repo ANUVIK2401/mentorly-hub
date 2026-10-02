@@ -27,7 +27,7 @@ Written 2026-10-01 against the Phase 0 reference build. Re-check file paths befo
 | T6.6 | Partly | `npm run bench` on memory and PGlite only; not measured against a hosted database |
 | T6.7 | **Yours** | Monitoring and a backup restore drill |
 
-Decisions made without asking: G2 treated as approved (installed `postgres` and `@electric-sql/pglite`); G4 recorded as D11 "latest wins" (proposed).
+Decisions made without asking: G2 treated as approved (installed `postgres` and `@electric-sql/pglite`); D11 first proposed "latest wins" for student details; a code review showed that was exploitable, so it is now "each application keeps its own copy" (migration 0003). Review fixes also: unpublished projects refuse applications, skill names that collide with an industry are rejected, `--reset` always needs `--yes-really`, apply rate limit counts valid submissions per cohort.
 
 ## How to hand off a task
 

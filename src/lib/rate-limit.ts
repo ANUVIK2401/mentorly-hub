@@ -16,7 +16,8 @@ export interface RateRule {
 }
 
 export const LOGIN_RULE: RateRule = { name: "login", max: 5, windowMs: 60_000 };
-export const APPLY_RULE: RateRule = { name: "apply", max: 10, windowMs: 10 * 60_000 };
+// Generous because a campus or classroom often shares one IP; counted per cohort, valid submissions only.
+export const APPLY_RULE: RateRule = { name: "apply", max: 20, windowMs: 10 * 60_000 };
 
 export interface RateResult {
   allowed: boolean;
@@ -26,17 +27,17 @@ export interface RateResult {
 const SWEEP_ABOVE = 5_000;
 
 export function createRateLimiter(now: () => number = Date.now) {
-  const windows = new Map<string, { start: number; count: number }>();
+  const windows = new Map<string, { start: number; count: number; windowMs: number }>();
   return {
     hit(key: string, rule: RateRule): RateResult {
       const t = now();
       const id = `${rule.name}:${key}`;
       let w = windows.get(id);
       if (!w || t - w.start >= rule.windowMs) {
-        w = { start: t, count: 0 };
+        w = { start: t, count: 0, windowMs: rule.windowMs };
         windows.set(id, w);
         if (windows.size > SWEEP_ABOVE) {
-          for (const [k, v] of windows) if (t - v.start >= rule.windowMs) windows.delete(k);
+          for (const [k, v] of windows) if (t - v.start >= v.windowMs) windows.delete(k);
         }
       }
       w.count += 1;
@@ -51,7 +52,12 @@ declare global {
   var __projectHubLimiter: ReturnType<typeof createRateLimiter> | undefined;
 }
 
-/** A stable, non-reversible id for the caller. The raw IP is never stored. */
+/**
+ * A stable, non-reversible id for the caller. The raw IP is never stored.
+ * ASSUMES the host overwrites x-forwarded-for with the real client address, as Vercel does. Behind a proxy
+ * that only appends to it, a client can forge the first hop and dodge the limit. With no header at all every
+ * caller shares one "unknown" bucket (fine locally; not expected on Vercel).
+ */
 export async function clientKey(): Promise<string> {
   const h = await headers();
   const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "unknown";

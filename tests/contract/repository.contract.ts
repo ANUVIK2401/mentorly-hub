@@ -160,6 +160,46 @@ export function runRepositoryContract(name: string, make: RepoFactory): void {
     assert.equal(await repo.getApplicationStatus("00000000-0000-4000-8000-000000000000"), null);
   });
 
+  it("keeps each application's own student details; a later or rejected application never rewrites them", async () => {
+    const { repo } = await make();
+    const open = (await repo.listCohortRows()).filter((r) => r.status === "open" && r.seatsTaken === 0);
+    const a = await repo.createApplication({ cohortId: open[0].cohortId, student, statement: "x".repeat(60) });
+    const b = await repo.createApplication({
+      cohortId: open[1].cohortId,
+      student: { ...student, name: "Changed Name", school: "Other University" },
+      statement: "y".repeat(60),
+    });
+    assert.ok(a.ok && b.ok);
+    if (!a.ok || !b.ok) return;
+
+    const rejected = await repo.createApplication({
+      cohortId: open[0].cohortId,
+      student: { ...student, name: "Impostor", school: "Evil U" },
+      statement: "z".repeat(60),
+    });
+    assert.ok(!rejected.ok && rejected.code === "duplicate");
+
+    const first = await repo.getAdminApplication(a.application.id);
+    assert.equal(first?.student.name, "Test Student");
+    assert.equal(first?.student.school, "Lakeview University");
+    assert.equal((await repo.getAdminApplication(b.application.id))?.student.name, "Changed Name");
+    assert.equal((await repo.getApplicationStatus(a.application.id))?.studentName, "Test Student");
+    const listed = await repo.listApplications({ q: "Impostor", page: 1, pageSize: 10 });
+    assert.equal(listed.total, 0);
+  });
+
+  it("refuses applications to a project that is not published", async () => {
+    const { repo } = await make();
+    const row = (await repo.listCohortRows()).find((r) => r.status === "open" && r.seatsTaken === 0)!;
+    const project = (await repo.listProjectsAdmin({ q: row.projectTitle, page: 1, pageSize: 5 })).items[0];
+    assert.ok(await repo.setProjectStatus(project.id, "archived"));
+    const res = await repo.createApplication({ cohortId: row.cohortId, student, statement: "x".repeat(60) });
+    assert.ok(!res.ok && res.code === "cohort_not_found");
+    assert.ok(await repo.setProjectStatus(project.id, "draft"));
+    const again = await repo.createApplication({ cohortId: row.cohortId, student, statement: "x".repeat(60) });
+    assert.ok(!again.ok);
+  });
+
   it("records an audit event for every real status change and none for a no-op", async () => {
     const { repo } = await make();
     const cohortId = await openCohortId(repo);
@@ -298,6 +338,17 @@ export function runRepositoryContract(name: string, make: RepoFactory): void {
       assert.ok(!badIndustry.ok && badIndustry.fieldErrors.industryId);
       const missing = await repo.saveProject({ ...full, id: "prj-does-not-exist" });
       assert.ok(!missing.ok);
+    });
+
+    it("refuses a skill name that collides with an industry id, and a cohort moved to another project", async () => {
+      const { repo } = await make();
+      const clash = await repo.saveProject(baseProject(await firstInstructorId(repo), { skillNames: ["Finance", "Excel"] }));
+      assert.ok(!clash.ok && clash.fieldErrors.skillNames);
+
+      const demo = (await repo.getCohortAdmin(DEMO_COHORT_ID))!;
+      const other = (await repo.listProjectsAdmin({ page: 1, pageSize: 5 })).items.find((p) => p.id !== demo.projectId)!;
+      const moved = await repo.saveCohort({ ...demo, projectId: other.id });
+      assert.ok(!moved.ok);
     });
 
     it("lists drafts for admins only, filters by status, and paginates", async () => {
