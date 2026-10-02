@@ -3,7 +3,12 @@ import ExcelJS from "exceljs";
 
 const ADMIN_PASSWORD = "e2e-secret";
 
+// The login limiter keys on the client IP. Give each test its own address so they do not share a bucket.
+let nextIp = 10;
+const freshIp = () => `203.0.113.${nextIp++ % 250}`;
+
 async function adminLogin(page: Page) {
+  await page.setExtraHTTPHeaders({ "x-forwarded-for": freshIp() });
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/admin\/login/);
   await page.getByLabel("Password").fill(ADMIN_PASSWORD);
@@ -72,6 +77,22 @@ test.describe("security headers", () => {
       expect(h["permissions-policy"]).toContain("camera=()");
       expect(h["content-security-policy-report-only"]).toContain("frame-ancestors 'none'");
     }
+  });
+});
+
+test.describe("rate limiting", () => {
+  test("the sixth wrong password in a minute is refused, even with the right one", async ({ page }) => {
+    await page.setExtraHTTPHeaders({ "x-forwarded-for": "198.51.100.77" });
+    for (let i = 0; i < 5; i++) {
+      await page.goto("/admin/login");
+      await page.getByLabel("Password").fill(`wrong-${i}`);
+      await page.getByRole("button", { name: "Sign in" }).click();
+      await expect(page.getByText("Incorrect password.")).toBeVisible();
+    }
+    await page.goto("/admin/login");
+    await page.getByLabel("Password").fill(ADMIN_PASSWORD);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page.getByText("Too many attempts.")).toBeVisible();
   });
 });
 

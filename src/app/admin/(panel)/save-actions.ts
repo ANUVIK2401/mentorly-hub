@@ -69,6 +69,6 @@ export async function setProjectStatusAction(formData: FormData): Promise<void> 
   const id = String(formData.get("id") ?? "");
   const status = String(formData.get("status") ?? "") as ProjectStatus;
   if (!id || !PROJECT_STATUSES.includes(status)) redirect("/admin/projects");
-  await getRepo().setProjectStatus(id, status);
-  redirect(`/admin/projects/${id}?saved=status`);
+  if (!(await getRepo().setProjectStatus(id, status))) redirect("/admin/projects");
+  redirect(`/admin/projects/${encodeURIComponent(id)}?saved=status`);
 }

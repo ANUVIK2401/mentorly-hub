@@ -1,8 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { getRepo } from "@/data";
 import type { ApplicationFormValues, ApplyState } from "@/lib/apply-state";
+import { applicationReceivedMail, sendSafely } from "@/lib/mailer";
+import { APPLY_RULE, limitByClient } from "@/lib/rate-limit";
 import { applicationSchema } from "@/lib/validation";
 
 const FIELDS = ["name", "email", "school", "program", "graduationYear", "statement"] as const;
@@ -20,6 +23,15 @@ export async function submitApplication(_prev: ApplyState, formData: FormData): 
     return { status: "error", formError: "Something went wrong. Please try again.", fieldErrors: {}, values };
   }
 
+  if (!(await limitByClient(APPLY_RULE)).allowed) {
+    return {
+      status: "error",
+      formError: "Too many applications from your network. Please wait a few minutes and try again.",
+      fieldErrors: {},
+      values,
+    };
+  }
+
   const parsed = applicationSchema.safeParse({ cohortId, ...values });
   if (!parsed.success) {
     const fieldErrors: Partial<Record<keyof ApplicationFormValues, string>> = {};
@@ -34,10 +46,21 @@ export async function submitApplication(_prev: ApplyState, formData: FormData): 
   }
 
   const { cohortId: cid, statement, ...student } = parsed.data;
-  const result = await getRepo().createApplication({ cohortId: cid, student, statement });
+  const repo = getRepo();
+  const result = await repo.createApplication({ cohortId: cid, student, statement });
   if (!result.ok) {
     return { status: "error", formError: result.message, fieldErrors: {}, values };
   }
+
+  // After the response, so a slow or failing mail transport never delays or fails the application.
+  const projectTitle = (await repo.getApplyContext(cid))?.project.title ?? "your project";
+  const mail = applicationReceivedMail({
+    to: result.application.student.email,
+    name: result.application.student.name,
+    projectTitle,
+    applicationId: result.application.id,
+  });
+  after(() => sendSafely(mail));
 
   redirect(`/application/${result.application.id}`);
 }

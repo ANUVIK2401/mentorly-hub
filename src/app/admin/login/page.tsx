@@ -30,6 +30,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               Incorrect password.
             </p>
           ) : null}
+          {error === "rate" ? (
+            <p role="alert" className="rounded-md border border-bad bg-bad-soft p-3 text-sm text-bad">
+              Too many attempts. Wait a minute and try again.
+            </p>
+          ) : null}
           <label className="block space-y-1 text-sm font-medium">
             Password
             <input
