@@ -4,6 +4,31 @@ Task-level breakdown of `docs/ROADMAP.md`. Each task is sized to be handed to on
 
 Written 2026-10-01 against the Phase 0 reference build. Re-check file paths before starting a task if much has changed since.
 
+## Status (2026-10-01)
+
+| Task | State | Notes |
+|---|---|---|
+| T0.1 | Done | Also fixed `typecheck` (now runs `next typegen` first, because `LayoutProps` is a generated type) and `.gitignore` (it ignored `.env.example`) |
+| T0.2 | **Yours** | Send Q1 to Q11 to Ben |
+| T0.3 | Done | Headers; its CSP is now the enforced one from T6.4 |
+| T1.1 to T1.7 | Done | Contract suite runs on memory and PGlite. Added `position` columns (industry and skill order) in migration 0001 |
+| T1.8 | **Blocked on G3** | Needs a hosted database. Not done: the concurrency test and the e2e suite have never run against a real Postgres |
+| T1.9 | Done | `privacy-reviewer` found no leaks; its two low findings were fixed |
+| T2.x, T4.x | **Blocked** | Need G5 (auth provider), and Q2 and Q4 from Ben |
+| T3.1 to T3.6 | Done | Built on the documented assumption that only admins create projects (Q1 unanswered). Uses `ProjectInput` with skill names, not tag ids |
+| T3.7 | Deferred | Image upload needs object storage and Q10 |
+| T5.1 | Done | Confirmation email on apply. Status-change emails not built (needs the student's email returned from the status update) |
+| T5.2, T5.3 | **Blocked** | G6 (mail provider); resume upload needs Q3 and Q10 |
+| T6.1 | Done, with a ceiling | In-memory, per instance (the plan proposed a Postgres table) |
+| T6.2 | Done | `application_events` table (migration 0002) and `/admin/applications/[id]` |
+| T6.3 | Partly | Contrast measured and fixed (one failing pair), skip link added. No automated axe run (new dependency) and no screen reader pass |
+| T6.4 | Done | Nonce CSP in `proxy.ts`; every page renders per request |
+| T6.5 | **Blocked** | Q10 |
+| T6.6 | Partly | `npm run bench` on memory and PGlite only; not measured against a hosted database |
+| T6.7 | **Yours** | Monitoring and a backup restore drill |
+
+Decisions made without asking: G2 treated as approved (installed `postgres` and `@electric-sql/pglite`); G4 recorded as D11 "latest wins" (proposed).
+
 ## How to hand off a task
 
 Paste this to the subagent, with the task card below it:

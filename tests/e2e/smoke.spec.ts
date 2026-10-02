@@ -51,6 +51,16 @@ test.describe("public catalog", () => {
     await expect(page.getByText("page 2 of 20")).toBeVisible();
   });
 
+  test("keyboard users get a skip link as the first tab stop", async ({ page }) => {
+    await page.goto("/projects");
+    await page.keyboard.press("Tab");
+    const skip = page.getByRole("link", { name: "Skip to main content" });
+    await expect(skip).toBeFocused();
+    await expect(skip).toBeVisible();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/#main$/);
+  });
+
   test("project detail shows cohorts and links to instructor", async ({ page }) => {
     await page.goto("/projects?open=1");
     await page.locator("article h3 a").first().click();
@@ -75,8 +85,33 @@ test.describe("security headers", () => {
       expect(h["x-frame-options"]).toBe("DENY");
       expect(h["referrer-policy"]).toBe("strict-origin-when-cross-origin");
       expect(h["permissions-policy"]).toContain("camera=()");
-      expect(h["content-security-policy-report-only"]).toContain("frame-ancestors 'none'");
+      expect(h["content-security-policy"]).toContain("frame-ancestors 'none'");
+      expect(h["content-security-policy"]).toMatch(/script-src 'self' 'nonce-[A-Za-z0-9+/=]+' 'strict-dynamic'/);
+      expect(h["content-security-policy"]).not.toContain("script-src 'self' 'unsafe-inline'");
     }
+  });
+});
+
+test.describe("content security policy", () => {
+  test("pages hydrate and work with no CSP violations, public and admin", async ({ page }) => {
+    const violations: string[] = [];
+    page.on("console", (m) => {
+      if (/content security policy|refused to (execute|load|apply)/i.test(m.text())) violations.push(m.text());
+    });
+    page.on("pageerror", (e) => violations.push(e.message));
+
+    await page.goto("/projects");
+    await page.getByRole("link", { name: "Finance" }).first().click(); // client navigation proves hydration
+    await expect(page).toHaveURL(/industry=finance/);
+    await page.goto("/apply/coh-prj-1-1");
+    await page.getByRole("button", { name: "Submit application" }).click(); // client form action
+    await expect(page.getByText("Enter your full name")).toBeVisible();
+    await page.goto("/does-not-exist");
+    await adminLogin(page);
+    await page.goto("/admin/projects/new");
+    await page.getByRole("button", { name: "Create project" }).click(); // admin client form
+    await expect(page.getByText("Choose an instructor")).toBeVisible();
+    expect(violations).toEqual([]);
   });
 });
 

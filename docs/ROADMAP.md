@@ -8,6 +8,8 @@ Start any phase in Claude Code with `/phase <n>`. It reads these docs, stops if 
 
 Catalog, filters, search, grid and list, pagination, project and instructor pages, apply flow with validation, status link, admin review with bulk status and waitlist rule, cohort capacity view, Excel export, shared-password admin, synthetic seed up to 1,152 projects, Postgres schema and migration, 34 unit tests, 9 browser tests.
 
+> **Status 2026-10-01:** Phase 1 code, Phase 3 and parts of Phases 5 and 6 are built (see `docs/IMPLEMENTATION_PLAN.md` for the task-by-task state). Still open: deploying against a real database (T1.8), Phases 2 and 4 (need Ben's answers and an auth provider), image and resume upload, status-change emails, retention.
+
 ## Phase 1: Real persistence (M) **do this before showing anyone real data**
 
 **Why:** on Vercel the in-memory store can lose applications when an instance recycles and may not share them across instances.

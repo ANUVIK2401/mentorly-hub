@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import "./globals.css";
 
 const SITE_NAME = "Project Hub";
@@ -10,13 +11,22 @@ export const metadata: Metadata = {
     "A catalog of 8-week, instructor-led projects. Browse by industry and skill, see open cohorts, and apply.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Render every page per request so the CSP nonce set in proxy.ts can be applied to Next's scripts.
+  await connection();
   return (
     <html lang="en" className="h-full">
       <body className="flex min-h-full flex-col">
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-accent focus:px-3 focus:py-2 focus:text-sm focus:text-accent-ink"
+        >
+          Skip to main content
+        </a>
         <div className="border-b border-line bg-accent-soft px-4 py-1.5 text-center text-xs text-ink">
-          Demo build with <strong>synthetic data</strong>. Applications are stored in memory and may reset. Please do not
-          enter real personal information.
+          Demo build with <strong>synthetic data</strong>.{" "}
+          {process.env.DATABASE_URL ? "" : "Applications are stored in memory and may reset. "}
+          Please do not enter real personal information.
         </div>
         <header className="border-b border-line bg-surface">
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">

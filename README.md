@@ -4,7 +4,7 @@ A catalog and application tracker for instructor-led projects. Students browse p
 
 This is a **reference build**: it runs on synthetic data with zero setup, deploys free on Vercel, and is structured to be built on top of with Claude Code.
 
-> **Heads up before you demo it.** Applications you submit are held in server memory. On Vercel they can disappear when the instance recycles, so run the whole demo in one sitting. The seeded data always comes back identical. Real persistence is Roadmap Phase 1 and the schema for it is already here.
+> **Storage.** With no `DATABASE_URL`, applications are held in server memory and can disappear when a Vercel instance recycles, so run the whole demo in one sitting. Set `DATABASE_URL` (see "Database") and everything persists in Postgres.
 
 ## What works today
 
@@ -17,10 +17,13 @@ This is a **reference build**: it runs on synthetic data with zero setup, deploy
 | Admin: review table, bulk status change, **waitlist when a cohort is full**, capacity view | Done |
 | **Excel export** (applications plus cohort capacity), respects filters | Done |
 | 1,000+ project scale | Verified (seed supports up to 1,152) |
-| Persistent database | Schema and migration ready, **not wired in** |
-| Real auth, instructor logins, project editing in the UI, email, resume upload | Not built (see `docs/ROADMAP.md`) |
+| **Postgres persistence** (Drizzle), same behavior as the in-memory repository, proven by one shared test suite | Done, switches on `DATABASE_URL` |
+| **Admin editing**: projects (draft, publish, archive), cohorts (capacity can never drop below seats taken), instructors | Done |
+| Application detail page with an audit trail of status changes | Done |
+| Confirmation email seam (logs only until a provider is approved), rate limiting on apply and login, enforced nonce CSP and security headers | Done |
+| Real auth and roles, instructor portal, status-change emails, resume upload, image upload | Not built (see `docs/ROADMAP.md` and `docs/IMPLEMENTATION_PLAN.md`) |
 
-Verified: lint, typecheck, 34 unit tests, production build, 9 browser tests (Playwright). `npm run check` runs all of it.
+Verified: lint, typecheck, 74 unit tests (the repository contract runs against memory and Postgres via PGlite), production build, 18 browser tests (Playwright). `npm run check` runs all of it.
 
 ## Quick start
 
@@ -45,6 +48,18 @@ More data: `SEED_COUNT=1000 npm run dev`. Tests: `npm run check` (first time: `n
 
 Then show Ben `docs/DECISIONS.md` and ask the open questions. Q3 (application fields) and Q9 (Excel columns) change the build the most.
 
+## Database
+
+```bash
+cp .env.example .env.local        # set DATABASE_URL (pooled connection string)
+npm run db:migrate                # applies /drizzle
+npm run db:seed                   # loads the synthetic catalog (SEED_COUNT, default 240)
+```
+
+The seed's cohort dates are relative to the day you seed. Re-run `npm run db:seed -- --reset` whenever the demo's cohorts have aged out (it refuses `--reset` under `NODE_ENV=production` without `--yes-really`). Without `DATABASE_URL` the app runs on memory and needs none of this.
+
+`TEST_DATABASE_URL=postgres://... npm test` additionally runs a concurrency test against a real server (it wipes that database).
+
 ## Deploy free on Vercel
 
 I verified the production build and `next start` locally. **I could not deploy to Vercel from my environment**, so these steps are untested end to end. They are the standard flow for a Next.js app.
@@ -55,6 +70,8 @@ I verified the production build and `next start` locally. **I could not deploy t
 3. Before deploying, add environment variables:
    - `ADMIN_PASSWORD`: choose a strong password. **Required.** Without it `/admin` is disabled in production by design.
    - `SESSION_SECRET`: output of `openssl rand -hex 32`. Recommended.
+   - `DATABASE_URL`: your **pooled** Postgres connection string, for persistence. Run `npm run db:migrate && npm run db:seed` against it once, from your machine.
+   - `SITE_URL`: your public origin, used in email links (optional on Vercel).
    - `SEED_COUNT`: optional, `1000` to show scale.
 4. Deploy. Open `/projects`, then `/admin/login`.
 
@@ -77,7 +94,9 @@ npx vercel --prod
 | `ADMIN_PASSWORD` | In production | Enables `/admin`. No default exists in production |
 | `SESSION_SECRET` | Recommended | Signs the admin cookie. Falls back to `ADMIN_PASSWORD` |
 | `SEED_COUNT` | No | Synthetic projects, 1 to 1152. Default 240 |
-| `DATABASE_URL` | Phase 1 | Not used yet |
+| `DATABASE_URL` | For persistence | Postgres connection string. Unset means in-memory demo data |
+| `SITE_URL` | No | Public origin for links in emails |
+| `MAIL_DEBUG` | No | Local only: print outgoing emails to the console |
 
 See `.env.example`.
 
@@ -90,6 +109,8 @@ See `.env.example`.
 | `npm test` | Unit tests only (about a second) |
 | `npm run test:e2e` | Browser tests against a production build |
 | `npm run db:generate` | Regenerate SQL from `src/db/schema.ts` (no database needed) |
+| `npm run db:migrate` / `db:seed` | Apply migrations / load the synthetic catalog (needs `DATABASE_URL`) |
+| `npm run bench` | Time the hot queries at 1,000 projects and about 11,900 applications |
 
 ## Building on it with Claude Code
 
@@ -123,12 +144,13 @@ tests/       unit tests and Playwright e2e
 
 ## Limitations
 
-- **In-memory applications** (above). Do not store real student data.
-- **One shared admin password.** Fine for a demo, not for real data.
-- No emails, no resume upload, no instructor logins, no project editing UI.
-- No rate limiting on the apply form, only a honeypot field.
+- **Without `DATABASE_URL`, applications live in memory** and can vanish. With it, they persist.
+- **One shared admin password.** Fine for a demo, not for real data (Phase 2).
+- No instructor logins, no resume or image upload, no status-change emails. The confirmation email only logs until a provider is chosen.
+- Rate limits are per server instance (in memory), so on Vercel the effective limit is higher than configured.
+- Do not store real student data until `docs/DECISIONS.md` Q10 (privacy) is answered.
 - All people, organizations and projects are fictional. Do not present them as real.
 
 ## Docs
 
-`docs/PRD.md` (what and why) · `docs/ARCHITECTURE.md` (how) · `docs/DATA_MODEL.md` · `docs/DECISIONS.md` (**questions for Ben**) · `docs/ROADMAP.md` (what next).
+`docs/PRD.md` (what and why) · `docs/ARCHITECTURE.md` (how) · `docs/DATA_MODEL.md` · `docs/DECISIONS.md` (**questions for Ben**) · `docs/ROADMAP.md` (what next) · `docs/IMPLEMENTATION_PLAN.md` (task-level plan and status).

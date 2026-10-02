@@ -21,7 +21,7 @@ Source column: **Ben** = stated in the meeting. **Ref** = observed on the refere
 |---|---|---|---|
 | R1 | Catalog pages that showcase projects and instructors, with summary, tags, learning goals and application info | Ben | Built |
 | R2 | Not full course delivery. Classes run on Zoom | Ben | By design |
-| R3 | Track student applications and enrollment information in a retrievable database | Ben | Built (in memory). Postgres schema ready. Roadmap Phase 1 |
+| R3 | Track student applications and enrollment information in a retrievable database | Ben | Built. Postgres when `DATABASE_URL` is set (deploy and verify: plan T1.8) |
 | R4 | Export that data to Excel | Ben | Built |
 | R5 | Support multiple instructors, each leading a project | Ben | Built |
 | R6 | About 5 to 15 students per project | Ben | Built as cohort capacity (min 5, max up to 15) |
@@ -35,8 +35,8 @@ Source column: **Ben** = stated in the meeting. **Ref** = observed on the refere
 | R14 | Admin reviews applications, changes status in bulk, sees capacity | Builder (implied by R3, R4) | Built |
 | R15 | Accepting into a full cohort waitlists instead of over-enrolling | Ben (5 to 15 per project) | Built and tested |
 | R16 | Instructors can see their own applicants | Builder | Not built. Phase 4 |
-| R17 | Admin can create and edit projects, instructors, tags and cohorts in the UI | Builder | Not built. Phase 3 |
-| R18 | Confirmation and status emails | Builder | Not built. Phase 5 |
+| R17 | Admin can create and edit projects, instructors, tags and cohorts in the UI | Builder | Built for projects, cohorts and instructors (tags and organizations are created by name inside those forms). Image upload not built |
+| R18 | Confirmation and status emails | Builder | Confirmation email built behind a seam that only logs. No provider, no status-change emails |
 
 ## Out of scope for now
 

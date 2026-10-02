@@ -17,11 +17,12 @@ Organization 1 ──< Instructor 1 ──< Project >── industry Tag
 | **Organization** | id, name | Fictional in the seed |
 | **Instructor** | id, slug, name, title, bio, organization | One project each in the seed. The schema allows several |
 | **Project** | id, slug, title, summary, description, learning goals[], deliverable, instructor, industry, skill tags, status | `status`: draft, published, archived. Only published is public |
-| **Tag** | id (slug), name, type | `industry` (exactly one per project) or `skill` (3 to 5 in the seed) |
+| **Tag** | id (slug), name, type, position | `industry` (exactly one per project) or `skill` (3 to 5 in the seed). `position` orders industry chips; a project's skills are ordered by `project_tags.position` |
 | **Cohort** | id, project, start, end, application deadline, min (5), max (8 to 15), zoom link | A project run at a specific time. **Status is derived**, not stored |
 | **Student** | name, email, school, program, graduation year | PII. In the demo it is embedded in the application. In Postgres it is its own table, unique on email |
 | **Application** | id (UUID), cohort, student, statement, status, submitted at, reviewed by | One per student per cohort. The UUID is the capability link |
 | **Enrollment** | application, enrolled at, completed at, certificate issued | In schema, unused by the demo |
+| **ApplicationEvent** | application, from status, to status, actor, at | Audit trail. One row per real status change, written with the change. Admin-only |
 | **AdminUser** | user id, role, instructor | In schema, unused until Phase 2 |
 
 ## Cohort status (derived)
@@ -46,7 +47,10 @@ Computed by `deriveCohortStatus()` from capacity, deadline, end date and "now":
 - One application per (cohort, lower-cased email). The Postgres schema also enforces it with a unique index.
 - Seats taken never exceed capacity through the admin flow.
 - Public DTOs contain no student email and no Zoom link.
-- Seeded applications are never dated in the future.
+- Seeded applications are never dated in the future. Seeded application ids are deterministic UUIDs (the Postgres column type).
+- A cohort's capacity never drops below its accepted plus enrolled seats (`cohortRuleErrors()`).
+- A project's organization always follows its instructor's.
+- Project and instructor slugs are unique. A draft or archived project is not reachable publicly.
 
 ## Seed
 
