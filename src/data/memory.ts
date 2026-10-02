@@ -8,7 +8,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { isUuid } from "@/lib/uuid";
-import { applicationKey, deriveCohortStatus, occupiesSeat, resolveStatusChange } from "@/lib/rules";
+import { applicationKey, deriveCohortStatus, notOpenMessage, occupiesSeat, resolveStatusChange } from "@/lib/rules";
 import type { AdminStats, ApplicationStatusView, ApplyContext, Repository } from "./repository";
 import type { SeedData } from "./seed";
 import {
@@ -278,12 +278,7 @@ export function createMemoryRepository(seed: SeedData, now: () => Date = () => n
 
       const view = cohortView(cohort);
       if (view.status !== "open") {
-        const reason: Record<Exclude<CohortStatus, "open">, string> = {
-          full: "This cohort is full.",
-          closed: `Applications closed on ${cohort.applicationDeadline}.`,
-          completed: "This cohort has already finished.",
-        };
-        return { ok: false, code: "not_open", message: reason[view.status] };
+        return { ok: false, code: "not_open", message: notOpenMessage(view.status, cohort.applicationDeadline) };
       }
 
       const key = applicationKey(cohort.id, input.student.email);

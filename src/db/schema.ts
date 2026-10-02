@@ -48,6 +48,8 @@ export const tags = pgTable("tags", {
   id: text("id").primaryKey(), // slug
   name: text("name").notNull(),
   type: tagTypeEnum("type").notNull(),
+  /** Display order. Industry chips render in this order; skill tags are sorted by name instead. */
+  position: integer("position").notNull().default(0),
 });
 
 export const instructors = pgTable(
@@ -106,6 +108,8 @@ export const projectTags = pgTable(
     tagId: text("tag_id")
       .notNull()
       .references(() => tags.id, { onDelete: "cascade" }),
+    /** Order of a project's skill tags on its card (most relevant first). */
+    position: integer("position").notNull().default(0),
   },
   (t) => [primaryKey({ columns: [t.projectId, t.tagId] }), index("project_tags_tag_idx").on(t.tagId)],
 );

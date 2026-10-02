@@ -28,6 +28,16 @@ export function deriveCohortStatus(
   return "open";
 }
 
+/** User-facing reason a cohort refuses applications. Shared so every repository words it the same. */
+export function notOpenMessage(status: Exclude<CohortStatus, "open">, applicationDeadline: string): string {
+  const reason: Record<Exclude<CohortStatus, "open">, string> = {
+    full: "This cohort is full.",
+    closed: `Applications closed on ${applicationDeadline}.`,
+    completed: "This cohort has already finished.",
+  };
+  return reason[status];
+}
+
 /**
  * Decide the resulting status when an admin changes an application's status.
  * Accepting someone into a full cohort turns into a waitlist entry instead.
