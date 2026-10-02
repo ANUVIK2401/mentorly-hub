@@ -6,6 +6,7 @@
  * Cohort dates are generated RELATIVE TO `now`, so the demo always has open, closed,
  * full and completed cohorts no matter when you deploy it.
  */
+import { createHash } from "node:crypto";
 import {
   FIRST_NAMES,
   INDUSTRIES,
@@ -80,8 +81,16 @@ export const DEMO_COHORT_ID = "coh-prj-1-1";
 const DEMO_CAPACITY = 10;
 const DEMO_PENDING = 4;
 
+/** Deterministic UUID (v4 layout) so seeded ids fit a Postgres uuid column and never change between runs. */
+function seededUuid(seed: number, namespace: string, n: number): string {
+  const h = createHash("sha256").update(`${seed}:${namespace}:${n}`).digest("hex");
+  const variant = ((Number.parseInt(h[16], 16) & 0x3) | 0x8).toString(16);
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-${variant}${h.slice(17, 20)}-${h.slice(20, 32)}`;
+}
+
 export function generateSeed(opts: { projectCount: number; now: Date; seed?: number }): SeedData {
-  const rnd = mulberry32(opts.seed ?? 20261001);
+  const seedValue = opts.seed ?? 20261001;
+  const rnd = mulberry32(seedValue);
   const int = (n: number) => Math.floor(rnd() * n);
   const pick = <T,>(arr: readonly T[]): T => arr[int(arr.length)];
   const today = startOfUtcDay(opts.now);
@@ -121,7 +130,7 @@ export function generateSeed(opts: { projectCount: number; now: Date; seed?: num
 
   const addApplication = (cohortId: string, status: ApplicationStatus, submittedDaysAgo: number) => {
     applications.push({
-      id: `seed-app-${applications.length + 1}`,
+      id: seededUuid(seedValue, "application", applications.length + 1),
       cohortId,
       student: makeStudent(),
       statement: pick(STATEMENTS),

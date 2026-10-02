@@ -32,6 +32,7 @@ Send these before starting Phase 1. "Assumption" is what the build does today. R
 | D8 | Student status page is a **capability link** (UUID in the URL), `noindex`, shows name and status but never email | Lets students check status without accounts | Phase 2 if accounts arrive |
 | D9 | Synthetic content only, fictional organizations and people | Do not copy a real organization's content or branding | Never |
 | D10 | Tailwind with CSS-variable tokens, system font stack, no component library | Zero build-time network dependencies, easy to re-theme | If a design system is chosen |
+| D11 | **Proposed, pending Anuvik's confirmation.** Postgres keeps one `students` row per lower-cased email. A later application updates the profile (latest wins), so an application shows the student's current school, program and year, not the values at submission time | Matches the schema's unique email and avoids duplicate people. Alternative: snapshot school, program and graduation year on `applications` so history is exact | Phase 2 if student accounts arrive, or if Ben needs exact historical records (Q3, Q10) |
 
 ## Decision log
 

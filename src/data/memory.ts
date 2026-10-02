@@ -7,6 +7,7 @@
  * recycles. Swap in a database-backed Repository for anything real.
  */
 import { randomUUID } from "node:crypto";
+import { isUuid } from "@/lib/uuid";
 import { applicationKey, deriveCohortStatus, occupiesSeat, resolveStatusChange } from "@/lib/rules";
 import type { AdminStats, ApplicationStatusView, ApplyContext, Repository } from "./repository";
 import type { SeedData } from "./seed";
@@ -309,6 +310,7 @@ export function createMemoryRepository(seed: SeedData, now: () => Date = () => n
     },
 
     async getApplicationStatus(id): Promise<ApplicationStatusView | null> {
+      if (!isUuid(id)) return null;
       const a = applications.get(id);
       if (!a) return null;
       const cohort = cohortsById.get(a.cohortId)!;

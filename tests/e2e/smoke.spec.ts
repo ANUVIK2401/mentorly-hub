@@ -62,6 +62,19 @@ test.describe("public catalog", () => {
   });
 });
 
+test.describe("security headers", () => {
+  test("every response carries the baseline headers", async ({ request }) => {
+    for (const path of ["/projects", "/admin/login"]) {
+      const h = (await request.get(path)).headers();
+      expect(h["x-content-type-options"]).toBe("nosniff");
+      expect(h["x-frame-options"]).toBe("DENY");
+      expect(h["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+      expect(h["permissions-policy"]).toContain("camera=()");
+      expect(h["content-security-policy-report-only"]).toContain("frame-ancestors 'none'");
+    }
+  });
+});
+
 test.describe("admin access control", () => {
   test("redirects anonymous visitors and rejects a wrong password", async ({ page, request }) => {
     await page.goto("/admin/applications");
