@@ -230,7 +230,7 @@ test.describe.serial("apply, review and export", () => {
       page.waitForEvent("download"),
       page.getByRole("link", { name: "Export these to Excel" }).click(),
     ]);
-    expect(download.suggestedFilename()).toMatch(/^project-hub-applications-\d{4}-\d{2}-\d{2}\.xlsx$/);
+    expect(download.suggestedFilename()).toMatch(/^mentorly-hub-applications-\d{4}-\d{2}-\d{2}\.xlsx$/);
     const path = await download.path();
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.readFile(path);

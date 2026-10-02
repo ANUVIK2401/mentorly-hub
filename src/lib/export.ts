@@ -62,7 +62,7 @@ function addSheet<T>(wb: ExcelJS.Workbook, name: string, columns: Column<T>[], r
 
 export async function buildWorkbook(applications: AdminApplicationRow[], cohorts: AdminCohortRow[]): Promise<Uint8Array> {
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Project Hub";
+  wb.creator = "Mentorly Hub";
   wb.created = new Date();
   addSheet(wb, "Applications", APPLICATION_COLUMNS, applications);
   addSheet(wb, "Cohort capacity", COHORT_COLUMNS, cohorts);

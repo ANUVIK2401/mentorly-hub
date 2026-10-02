@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
   return new Response(new Blob([file as BlobPart]), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="project-hub-applications-${stamp}.xlsx"`,
+      "Content-Disposition": `attachment; filename="mentorly-hub-applications-${stamp}.xlsx"`,
       "Cache-Control": "no-store",
     },
   });

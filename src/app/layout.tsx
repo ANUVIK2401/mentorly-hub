@@ -3,7 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import "./globals.css";
 
-const SITE_NAME = "Project Hub";
+const SITE_NAME = "Mentorly Hub";
 
 export const metadata: Metadata = {
   title: { default: `${SITE_NAME}: browse and apply to hands-on projects`, template: `%s | ${SITE_NAME}` },
@@ -51,7 +51,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           {children}
         </main>
         <footer className="border-t border-line py-6 text-center text-xs text-muted">
-          Project Hub reference build. All projects, people and organizations shown are fictional.
+          Mentorly Hub reference build. All projects, people and organizations shown are fictional.
         </footer>
       </body>
     </html>

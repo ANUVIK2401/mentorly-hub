@@ -1,4 +1,4 @@
-# Project Hub
+# Mentorly Hub
 
 A catalog and application tracker for instructor-led projects. Students browse projects and apply to a cohort. An admin reviews applications and exports them to Excel. Teaching happens on Zoom, outside the app.
 

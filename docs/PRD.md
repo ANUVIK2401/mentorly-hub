@@ -1,6 +1,6 @@
 # Product requirements
 
-Working name: **Project Hub**. Product owner: Prof. Ben Lee. Builder: Anuvik Thota.
+Working name: **Mentorly Hub** (was Project Hub). Product owner: Prof. Ben Lee. Builder: Anuvik Thota.
 
 ## One-sentence mental model
 

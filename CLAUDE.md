@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# Project Hub
+# Mentorly Hub
 
 A catalog and application tracker for instructor-led projects: students browse projects, apply to a cohort, and an admin reviews applications and exports them to Excel. **Not an LMS.** Teaching happens on Zoom, outside this app.
 

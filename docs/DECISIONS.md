@@ -13,7 +13,7 @@ Send these before starting Phase 1. "Assumption" is what the build does today. R
 | Q5 | Are projects run in dated cohorts (like 8-week runs), or rolling? | Dated cohorts, 8 weeks, apply by a deadline one week before | Core data model. Rolling would remove `Cohort` as a dated entity |
 | Q6 | Is there any cost or payment? | None | Payments are a large separate scope |
 | Q7 | Certificates of completion in v1? | No | `enrollments.certificate_issued` exists but unused |
-| Q8 | Name, logo, colors? | "Project Hub", green accent | `globals.css` tokens, layout |
+| Q8 | Name, logo, colors? | "Mentorly Hub" (chosen by Anuvik 2026-10-01, confirm with Ben), green accent | `globals.css` tokens, layout |
 | Q9 | Exact Excel columns? | 12 columns on Applications plus a cohort capacity sheet | `APPLICATION_COLUMNS` in `src/lib/export.ts` |
 | Q10 | Privacy constraints on student data (university policy, retention, who may see it)? | None assumed. Demo uses fake data only | **Blocks real data.** Retention, deletion, access rules |
 | Q11 | Budget and hosting expectations once this is real? | Free tier for the demo | Vercel's Hobby plan is for personal, non-commercial use (check its current terms). A real product likely needs a paid plan and a paid database |
