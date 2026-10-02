@@ -185,6 +185,7 @@ export function createMemoryRepository(seed: SeedData, now: () => Date = () => n
       statement: a.statement,
       cohortId: cohort.id,
       cohortStart: cohort.startDate,
+      projectId: project.id,
       projectTitle: project.title,
       projectSlug: project.slug,
       instructorName: instructorsById.get(project.instructorId)!.name,
@@ -290,7 +291,8 @@ export function createMemoryRepository(seed: SeedData, now: () => Date = () => n
 
     async getInstructor(slug): Promise<InstructorDetail | null> {
       const i = instructorsBySlug.get(slug);
-      if (!i) return null;
+      // Same rule as listInstructors: no published project, no public page.
+      if (!i || !published.some((p) => p.instructorId === i.id)) return null;
       return {
         ...toInstructorCard(i),
         bio: i.bio,
@@ -368,7 +370,10 @@ export function createMemoryRepository(seed: SeedData, now: () => Date = () => n
       const byStatus = Object.fromEntries(APPLICATION_STATUSES.map((s) => [s, 0])) as Record<ApplicationStatus, number>;
       for (const a of applications.values()) byStatus[a.status] += 1;
       let openCohorts = 0;
-      for (const c of cohortsById.values()) if (cohortView(c).status === "open") openCohorts += 1;
+      for (const c of cohortsById.values()) {
+        // Only cohorts students can actually apply to: open AND on a published project.
+        if (projectsById.get(c.projectId)?.status === "published" && cohortView(c).status === "open") openCohorts += 1;
+      }
       return {
         projects: published.length,
         instructors: instructorsById.size,
@@ -400,6 +405,7 @@ export function createMemoryRepository(seed: SeedData, now: () => Date = () => n
           const p = projectsById.get(c.projectId)!;
           return {
             cohortId: c.id,
+            projectId: p.id,
             projectTitle: p.title,
             projectSlug: p.slug,
             instructorName: instructorsById.get(p.instructorId)!.name,

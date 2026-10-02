@@ -29,8 +29,9 @@ export default async function AdminApplications({ searchParams }: { searchParams
   const exportHref = hrefWith("/admin/export", filterParams);
   const returnTo = listHref(result.page);
 
-  const updated = first(sp.updated);
-  const waitlisted = Number(first(sp.waitlisted) || 0);
+  const updatedRaw = Number.parseInt(first(sp.updated), 10);
+  const updated = Number.isFinite(updatedRaw) && updatedRaw >= 0 ? updatedRaw : null;
+  const waitlisted = Number.parseInt(first(sp.waitlisted), 10) || 0;
   const notice = first(sp.notice);
 
   return (
@@ -51,9 +52,9 @@ export default async function AdminApplications({ searchParams }: { searchParams
         </a>
       </div>
 
-      {updated ? (
+      {updated !== null ? (
         <p role="status" className="rounded-md border border-line bg-accent-soft p-3 text-sm text-accent">
-          Updated {plural(Number(updated), "application")}.
+          Updated {plural(updated, "application")}.
           {waitlisted > 0
             ? ` ${plural(waitlisted, "acceptance")} became waitlist entries because the cohort is full.`
             : ""}
@@ -163,7 +164,7 @@ export default async function AdminApplications({ searchParams }: { searchParams
                       </details>
                     </td>
                     <td className="px-3 py-3">
-                      <Link href={`/projects/${a.projectSlug}`} className="font-medium hover:underline">
+                      <Link href={`/admin/projects/${a.projectId}`} className="font-medium hover:underline">
                         {a.projectTitle}
                       </Link>
                       <p className="text-muted">

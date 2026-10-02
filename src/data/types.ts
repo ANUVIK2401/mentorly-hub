@@ -178,6 +178,8 @@ export interface AdminApplicationRow {
   statement: string;
   cohortId: string;
   cohortStart: string;
+  /** Admin links use this (the public slug 404s for draft or archived projects). */
+  projectId: string;
   projectTitle: string;
   projectSlug: string;
   instructorName: string;
@@ -193,6 +195,7 @@ export interface AdminApplicationFilter {
 
 export interface AdminCohortRow {
   cohortId: string;
+  projectId: string;
   projectTitle: string;
   projectSlug: string;
   instructorName: string;

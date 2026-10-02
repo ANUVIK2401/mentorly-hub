@@ -235,6 +235,7 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
         graduationYear: applications.studentGraduationYear,
         cohortId: cohorts.id,
         cohortStart: cohorts.startDate,
+        projectId: projects.id,
         projectTitle: projects.title,
         projectSlug: projects.slug,
         instructorName: instructors.name,
@@ -271,6 +272,7 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
     statement: r.statement,
     cohortId: r.cohortId,
     cohortStart: r.cohortStart,
+    projectId: r.projectId,
     projectTitle: r.projectTitle,
     projectSlug: r.projectSlug,
     instructorName: r.instructorName,
@@ -412,6 +414,7 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
         .where(eq(instructors.slug, slug));
       if (!i) return null;
       const rows = await projectSelect().where(and(eq(projects.instructorId, i.id), eq(projects.status, "published")));
+      if (rows.length === 0) return null; // same rule as listInstructors: no published project, no public page
       return {
         slug: i.slug,
         name: i.name,
@@ -545,7 +548,11 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
         db.select({ n: count() }).from(projects).where(eq(projects.status, "published")),
         db.select({ n: count() }).from(instructors),
         db.select({ status: applications.status, n: count() }).from(applications).groupBy(applications.status),
-        db.select(COHORT_COLUMNS).from(cohorts),
+        db
+          .select(COHORT_COLUMNS)
+          .from(cohorts)
+          .innerJoin(projects, eq(projects.id, cohorts.projectId))
+          .where(eq(projects.status, "published")),
       ]);
       const counts = await countsFor(db);
       const byStatus = Object.fromEntries(APPLICATION_STATUSES.map((s) => [s, 0])) as Record<ApplicationStatus, number>;
@@ -625,6 +632,7 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
           const n = counts.get(c.id);
           return {
             cohortId: c.id,
+            projectId: c.projectId,
             projectTitle: c.projectTitle,
             projectSlug: c.projectSlug,
             instructorName: c.instructorName,

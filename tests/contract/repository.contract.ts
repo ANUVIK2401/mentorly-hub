@@ -351,6 +351,32 @@ export function runRepositoryContract(name: string, make: RepoFactory): void {
       assert.ok(!moved.ok);
     });
 
+    it("hides unpublished projects everywhere public, including their instructor and open-cohort count", async () => {
+      const { repo } = await make();
+      const before = (await repo.getAdminStats()).openCohorts;
+      const row = (await repo.listCohortRows()).find((r) => r.status === "open")!;
+      assert.ok(row.projectId, "admin cohort rows carry the project id for admin links");
+      const openForProject = (await repo.listCohortRows()).filter((r) => r.projectId === row.projectId && r.status === "open").length;
+      const instructorSlug = (await repo.getProject(row.projectSlug))!.instructor.slug;
+
+      assert.ok(await repo.setProjectStatus(row.projectId, "draft"));
+      assert.equal((await repo.getAdminStats()).openCohorts, before - openForProject);
+      assert.equal(await repo.getInstructor(instructorSlug), null);
+
+      const created = await repo.saveInstructor({
+        slug: "no-projects-yet",
+        name: "Nobody Yet",
+        title: "Fictional",
+        bio: "A fictional instructor with no published projects at all, for tests.",
+        organizationName: "Fictional Org",
+      });
+      assert.ok(created.ok);
+      assert.equal(await repo.getInstructor("no-projects-yet"), null);
+
+      const apps = await repo.listApplications({ page: 1, pageSize: 1 });
+      assert.ok(apps.items[0].projectId);
+    });
+
     it("lists drafts for admins only, filters by status, and paginates", async () => {
       const { repo } = await make(40);
       const saved = await repo.saveProject(baseProject(await firstInstructorId(repo)));

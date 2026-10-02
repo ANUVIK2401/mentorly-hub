@@ -64,7 +64,7 @@ export default async function AdminCohorts({ searchParams }: { searchParams: Pro
             {rows.map((r) => (
               <tr key={r.cohortId} className="border-b border-line align-top last:border-0">
                 <td className="px-3 py-3">
-                  <Link href={`/projects/${r.projectSlug}`} className="font-medium hover:underline">
+                  <Link href={`/admin/projects/${r.projectId}`} className="font-medium hover:underline">
                     {r.projectTitle}
                   </Link>
                   <p className="text-muted">{r.instructorName}</p>
