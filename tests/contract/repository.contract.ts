@@ -160,6 +160,32 @@ export function runRepositoryContract(name: string, make: RepoFactory): void {
     assert.equal(await repo.getApplicationStatus("00000000-0000-4000-8000-000000000000"), null);
   });
 
+  it("records an audit event for every real status change and none for a no-op", async () => {
+    const { repo } = await make();
+    const cohortId = await openCohortId(repo);
+    const res = await repo.createApplication({ cohortId, student, statement: "x".repeat(60) });
+    assert.ok(res.ok);
+    if (!res.ok) return;
+    const id = res.application.id;
+    assert.deepEqual((await repo.getAdminApplication(id))?.events, []);
+
+    await repo.updateApplicationStatus(id, "under_review", "alice");
+    await repo.updateApplicationStatus(id, "under_review", "alice"); // no-op: same status
+    await repo.updateApplicationStatus(id, "accepted", "bob");
+
+    const detail = await repo.getAdminApplication(id);
+    assert.equal(detail?.student.email, "test.student@example.edu");
+    assert.deepEqual(
+      detail?.events.map((e) => [e.from, e.to, e.actor]),
+      [
+        ["under_review", "accepted", "bob"],
+        ["submitted", "under_review", "alice"],
+      ],
+    );
+    assert.equal(await repo.getAdminApplication("abc"), null);
+    assert.equal(await repo.getAdminApplication("00000000-0000-4000-8000-000000000000"), null);
+  });
+
   it("student status view exposes no email", async () => {
       const { repo } = await make();
       const cohortId = await openCohortId(repo);

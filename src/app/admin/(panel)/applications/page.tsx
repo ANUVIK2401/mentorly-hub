@@ -148,7 +148,11 @@ export default async function AdminApplications({ searchParams }: { searchParams
                       <input type="checkbox" name="ids" value={a.id} aria-label={`Select ${a.student.name}`} className="h-4 w-4 accent-[var(--accent)]" />
                     </td>
                     <td className="px-3 py-3">
-                      <p className="font-medium">{a.student.name}</p>
+                      <p className="font-medium">
+                        <Link href={`/admin/applications/${a.id}`} className="text-accent hover:underline">
+                          {a.student.name}
+                        </Link>
+                      </p>
                       <p className="text-muted">{a.student.email}</p>
                       <p className="text-muted">
                         {a.student.school} · {a.student.program} · {a.student.graduationYear}

@@ -14,6 +14,7 @@ import { randomUUID } from "node:crypto";
 import { and, asc, count, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import {
+  applicationEvents,
   applications,
   cohorts,
   instructors,
@@ -35,6 +36,7 @@ import { slugify } from "./seed";
 import type { AdminStats, ApplicationStatusView, ApplyContext, Repository } from "./repository";
 import {
   APPLICATION_STATUSES,
+  type AdminApplicationDetail,
   type AdminApplicationFilter,
   type AdminCohortEdit,
   type AdminInstructorRow,
@@ -563,6 +565,23 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
       return { items: rows.map(toAdminRow), total, page, pageSize: filter.pageSize, pageCount };
     },
 
+    async getAdminApplication(id): Promise<AdminApplicationDetail | null> {
+      if (!isUuid(id)) return null;
+      const [row] = await adminRowSelect().where(eq(applications.id, id));
+      if (!row) return null;
+      const events = await db
+        .select({
+          from: applicationEvents.fromStatus,
+          to: applicationEvents.toStatus,
+          actor: applicationEvents.actor,
+          at: applicationEvents.at,
+        })
+        .from(applicationEvents)
+        .where(eq(applicationEvents.applicationId, id))
+        .orderBy(desc(applicationEvents.at), desc(applicationEvents.seq));
+      return { ...toAdminRow(row), events: events.map((e) => ({ ...e, at: e.at.toISOString() })) };
+    },
+
     async exportApplications(filter) {
       const rows = await adminRowSelect()
         .where(applicationFilter(filter))
@@ -634,6 +653,15 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
           maxStudents: locked.cohort.maxStudents,
         });
         await tx.update(applications).set({ status: result.status, reviewedBy: reviewer }).where(eq(applications.id, id));
+        if (current.status !== result.status) {
+          await tx.insert(applicationEvents).values({
+            applicationId: id,
+            fromStatus: current.status,
+            toStatus: result.status,
+            actor: reviewer,
+            at: now(),
+          });
+        }
         return { ok: true, status: result.status, waitlistedBecauseFull: result.waitlistedBecauseFull };
       });
     },

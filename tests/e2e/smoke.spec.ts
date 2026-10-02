@@ -118,6 +118,7 @@ test.describe("admin access control", () => {
       "/admin/instructors",
       "/admin/instructors/new",
       "/admin/instructors/ins-1",
+      "/admin/applications/00000000-0000-4000-8000-000000000000",
     ]) {
       await page.goto(path);
       await expect(page, path).toHaveURL(/\/admin\/login/);
@@ -206,6 +207,15 @@ test.describe.serial("apply, review and export", () => {
     const emailCol = headers.indexOf("Email") + 1;
     expect(sheet.getRow(2).getCell(emailCol).value).toBe(email);
     expect(sheet.getRow(2).getCell(headers.indexOf("Status") + 1).value).toBe("Accepted");
+  });
+
+  test("the application's detail page shows who changed its status", async ({ page }) => {
+    await adminLogin(page);
+    await page.goto(`/admin/applications?q=${encodeURIComponent(email)}`);
+    await page.getByRole("link", { name: "E2E Student" }).first().click();
+    await expect(page.getByRole("heading", { name: "History" })).toBeVisible();
+    await expect(page.getByText(/Submitted → Accepted\s+by admin/)).toBeVisible();
+    expect((await page.goto("/admin/applications/not-a-uuid"))?.status()).toBe(404);
   });
 
   test("admin cohort capacity view loads and links to applications", async ({ page }) => {

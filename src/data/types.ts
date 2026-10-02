@@ -300,3 +300,16 @@ export interface InstructorOption {
 export type SaveResult =
   | { ok: true; id: string }
   | { ok: false; fieldErrors: Record<string, string>; message?: string };
+
+/** One audited status change. Admin-only. */
+export interface ApplicationEvent {
+  from: ApplicationStatus;
+  to: ApplicationStatus;
+  actor: string;
+  at: string;
+}
+
+export interface AdminApplicationDetail extends AdminApplicationRow {
+  /** Newest first. */
+  events: ApplicationEvent[];
+}

@@ -7,6 +7,7 @@
  * Nothing else in the app should need to change.
  */
 import type {
+  AdminApplicationDetail,
   AdminCohortEdit,
   AdminInstructorRow,
   AdminProjectFilter,
@@ -75,6 +76,8 @@ export interface Repository {
   /* ---- admin: callers MUST have passed requireAdmin() first ---- */
   getAdminStats(): Promise<AdminStats>;
   listApplications(filter: AdminApplicationFilter): Promise<Page<AdminApplicationRow>>;
+  /** One application with its audit trail (every real status change, newest first). */
+  getAdminApplication(id: string): Promise<AdminApplicationDetail | null>;
   /** Unpaginated, for Excel export. */
   exportApplications(filter: Omit<AdminApplicationFilter, "page" | "pageSize">): Promise<AdminApplicationRow[]>;
   listCohortRows(): Promise<AdminCohortRow[]>;

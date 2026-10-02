@@ -14,7 +14,9 @@ import type { AdminStats, ApplicationStatusView, ApplyContext, Repository } from
 import type { SeedData } from "./seed";
 import {
   APPLICATION_STATUSES,
+  type AdminApplicationDetail,
   type AdminApplicationFilter,
+  type ApplicationEvent,
   type AdminCohortEdit,
   type AdminInstructorRow,
   type AdminProjectRow,
@@ -102,6 +104,7 @@ export function createMemoryRepository(seed: SeedData, now: () => Date = () => n
   }
 
   const applications = new Map<string, Application>();
+  const events = new Map<string, ApplicationEvent[]>();
   const appKeys = new Set<string>();
   const seatsTaken = new Map<string, number>();
   const appCount = new Map<string, number>();
@@ -376,6 +379,12 @@ export function createMemoryRepository(seed: SeedData, now: () => Date = () => n
       return pageData;
     },
 
+    async getAdminApplication(id): Promise<AdminApplicationDetail | null> {
+      if (!isUuid(id)) return null;
+      const a = applications.get(id);
+      return a ? { ...toAdminRow(a), events: [...(events.get(id) ?? [])] } : null;
+    },
+
     async exportApplications(filter) {
       return filteredApplications(filter);
     },
@@ -424,6 +433,11 @@ export function createMemoryRepository(seed: SeedData, now: () => Date = () => n
       if (a.status === "waitlisted") bump(waitlistCount, cohort.id, -1);
       if (result.status === "waitlisted") bump(waitlistCount, cohort.id, 1);
 
+      if (a.status !== result.status) {
+        const list = events.get(a.id) ?? [];
+        list.unshift({ from: a.status, to: result.status, actor: reviewer, at: now().toISOString() });
+        events.set(a.id, list);
+      }
       a.status = result.status;
       a.reviewedBy = reviewer;
       return { ok: true, status: result.status, waitlistedBecauseFull: result.waitlistedBecauseFull };

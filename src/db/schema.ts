@@ -19,6 +19,7 @@ import {
   pgEnum,
   pgTable,
   primaryKey,
+  serial,
   text,
   timestamp,
   uniqueIndex,
@@ -167,6 +168,24 @@ export const applications = pgTable(
     index("applications_cohort_status_idx").on(t.cohortId, t.status),
     index("applications_submitted_idx").on(t.submittedAt),
   ],
+);
+
+/** Audit trail: one row per real status change, written in the same transaction as the change. */
+export const applicationEvents = pgTable(
+  "application_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Insert order. Breaks ties when two events share a timestamp. */
+    seq: serial("seq").notNull(),
+    applicationId: uuid("application_id")
+      .notNull()
+      .references(() => applications.id, { onDelete: "cascade" }),
+    fromStatus: applicationStatusEnum("from_status").notNull(),
+    toStatus: applicationStatusEnum("to_status").notNull(),
+    actor: text("actor").notNull(),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("application_events_application_idx").on(t.applicationId, t.at)],
 );
 
 export const enrollments = pgTable("enrollments", {
