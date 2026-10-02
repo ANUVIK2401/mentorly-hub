@@ -7,6 +7,10 @@
  * Nothing else in the app should need to change.
  */
 import type {
+  AdminCohortEdit,
+  AdminInstructorRow,
+  AdminProjectFilter,
+  AdminProjectRow,
   AdminApplicationFilter,
   AdminApplicationRow,
   AdminCohortRow,
@@ -14,12 +18,18 @@ import type {
   CohortView,
   CreateApplicationInput,
   CreateApplicationResult,
+  CohortInput,
   InstructorCard,
   InstructorDetail,
+  InstructorInput,
+  InstructorOption,
   Page,
   ProjectCard,
   ProjectDetail,
+  ProjectInput,
   ProjectQuery,
+  ProjectStatus,
+  SaveResult,
   StatusChangeResult,
   Tag,
 } from "./types";
@@ -73,4 +83,21 @@ export interface Repository {
     requested: ApplicationStatus,
     reviewer: string,
   ): Promise<StatusChangeResult>;
+
+  /* ---- admin editing: callers MUST have passed requireAdmin() first ---- */
+  /** Every project, including drafts and archived. Paginated. */
+  listProjectsAdmin(filter: AdminProjectFilter): Promise<Page<AdminProjectRow>>;
+  getProjectAdmin(id: string): Promise<ProjectInput | null>;
+  /** Create (no id) or update. Slug must be unique. Unknown skill names become new skill tags. */
+  saveProject(input: ProjectInput): Promise<SaveResult>;
+  setProjectStatus(id: string, status: ProjectStatus): Promise<boolean>;
+  listCohortsAdmin(projectId: string): Promise<AdminCohortEdit[]>;
+  getCohortAdmin(id: string): Promise<AdminCohortEdit | null>;
+  /** Create or update. Enforces cohortRuleErrors(), including "capacity cannot drop below seats taken". */
+  saveCohort(input: CohortInput): Promise<SaveResult>;
+  listInstructorsAdmin(page: number, pageSize: number): Promise<Page<AdminInstructorRow>>;
+  getInstructorAdmin(id: string): Promise<InstructorInput | null>;
+  /** All instructors by name, for a <select>. ponytail: unpaginated; switch to a search box past ~2,000. */
+  listInstructorOptions(): Promise<InstructorOption[]>;
+  saveInstructor(input: InstructorInput): Promise<SaveResult>;
 }

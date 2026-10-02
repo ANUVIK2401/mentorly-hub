@@ -87,6 +87,22 @@ test.describe("admin access control", () => {
     expect([301, 302, 307, 308, 401]).toContain(res.status());
   });
 
+  test("every admin editing page redirects anonymous visitors", async ({ page }) => {
+    for (const path of [
+      "/admin/projects",
+      "/admin/projects/new",
+      "/admin/projects/prj-1",
+      "/admin/projects/prj-1/cohorts/new",
+      "/admin/projects/prj-1/cohorts/coh-prj-1-1",
+      "/admin/instructors",
+      "/admin/instructors/new",
+      "/admin/instructors/ins-1",
+    ]) {
+      await page.goto(path);
+      await expect(page, path).toHaveURL(/\/admin\/login/);
+    }
+  });
+
   test("a forged session cookie does not grant access", async ({ page, context }) => {
     await context.addCookies([{ name: "hub_admin", value: "9999999999.deadbeef", url: "http://localhost:3100" }]);
     await page.goto("/admin/applications");
@@ -197,5 +213,70 @@ test.describe.serial("apply, review and export", () => {
     await expect(page.locator("tbody tr", { hasText: "Discounted Cash Flow Valuation" }).first()).toBeVisible();
     await page.goto("/apply/coh-prj-1-1");
     await expect(page.getByText("This cohort is not accepting applications.")).toBeVisible();
+  });
+});
+
+test.describe.serial("admin editing", () => {
+  const slug = `e2e-brand-new-project-${Date.now()}`;
+  const title = `E2E Brand New Project ${Date.now()}`;
+
+  test("creates an instructor, then a draft project that stays hidden until published", async ({ page }) => {
+    await adminLogin(page);
+
+    await page.goto("/admin/instructors/new");
+    await page.getByLabel("Full name").fill("Priya Testwell");
+    await page.getByLabel("Job title").fill("Fictional Analyst");
+    await page.getByLabel("Organization").fill("E2E Fictional Institute");
+    await page.getByLabel("Bio").fill("Priya is a fictional analyst created for the browser test suite only.");
+    await page.getByRole("button", { name: "Create instructor" }).click();
+    await expect(page.getByRole("status")).toContainText("Instructor saved.");
+
+    await page.goto("/admin/projects/new");
+    await page.getByRole("button", { name: "Create project" }).click(); // empty: validation errors
+    await expect(page.getByText("Enter a title (at least 5 characters)")).toBeVisible();
+    await expect(page.getByText("Choose an instructor")).toBeVisible();
+
+    await page.getByLabel("Title").fill(title);
+    await page.getByLabel("URL slug").fill(slug);
+    await page.getByLabel("Summary").fill("A fictional project that exists only to prove the admin editor works.");
+    await page.getByLabel("Description").fill("You will do a fictional thing in a fictional way, and then explain it carefully.");
+    await page.getByLabel("Learning goals").fill("Learn the first thing\nLearn the second thing");
+    await page.getByLabel("Deliverable").fill("A one-page memo");
+    await page.getByLabel("Instructor").selectOption({ label: "Priya Testwell (E2E Fictional Institute)" });
+    await page.getByLabel("Industry").selectOption({ label: "Finance" });
+    await page.getByLabel("Skills").fill("E2E Skill, Excel");
+    await page.getByRole("button", { name: "Create project" }).click();
+
+    await expect(page.getByRole("heading", { name: title })).toBeVisible();
+    await expect(page.getByRole("status")).toContainText("Project saved.");
+    expect((await page.goto(`/projects/${slug}`))?.status()).toBe(404); // draft is not public
+  });
+
+  test("adds a cohort, publishes, and the project appears publicly with an Apply link", async ({ page }) => {
+    await adminLogin(page);
+    await page.goto(`/admin/projects?q=${encodeURIComponent(title)}`);
+    await page.getByRole("link", { name: title }).click();
+
+    await page.getByRole("link", { name: "Add cohort" }).click();
+    await page.getByRole("button", { name: "Create cohort" }).click();
+    await expect(page.getByRole("status")).toContainText("Cohort saved.");
+
+    await page.getByRole("button", { name: "Publish" }).click();
+    await expect(page.getByRole("status")).toContainText("Status updated.");
+
+    await page.goto(`/projects/${slug}`);
+    await expect(page.getByRole("heading", { name: title })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Apply/ }).first()).toBeVisible();
+    await page.goto(`/projects?q=${encodeURIComponent("E2E Brand New")}`);
+    await expect(page.getByText(title)).toBeVisible();
+  });
+
+  test("refuses a capacity below the seats already taken", async ({ page }) => {
+    await adminLogin(page);
+    await page.goto("/admin/projects/prj-1/cohorts/coh-prj-1-1");
+    await page.getByLabel("Minimum students").fill("1");
+    await page.getByLabel("Capacity").fill("3");
+    await page.getByRole("button", { name: "Save changes" }).click();
+    await expect(page.getByText(/Capacity cannot be below the \d+ seats already taken/)).toBeVisible();
   });
 });

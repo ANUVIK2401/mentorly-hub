@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { Repository } from "@/data/repository";
 import { DEMO_COHORT_ID, type SeedData } from "@/data/seed";
-import type { StatusChangeResult } from "@/data/types";
+import type { CohortInput, InstructorInput, ProjectInput, StatusChangeResult } from "@/data/types";
 
 /** Fixed clock shared by every repository under test, so cohort status is reproducible. */
 export const CONTRACT_NOW = new Date("2026-10-01T12:00:00Z");
@@ -206,4 +206,170 @@ export function runRepositoryContract(name: string, make: RepoFactory): void {
         for (const s of ["open", "full", "closed", "completed"]) assert.ok(statuses.has(s as never), `missing ${s}`);
       });
     });
+
+  describe(`${name}: admin editing`, () => {
+    const baseProject = (instructorId: string, over: Partial<ProjectInput> = {}): ProjectInput => ({
+      title: "Audit a Fictional Coffee Roaster's Unit Economics",
+      slug: "audit-fictional-coffee-roaster",
+      summary: "Break a fictional roaster's margins into unit economics and recommend one change.",
+      description: "You will model a fictional business from first principles and defend a recommendation.",
+      learningGoals: ["Build a unit economics model", "Defend a recommendation"],
+      deliverable: "A five-page memo",
+      instructorId,
+      industryId: "finance",
+      skillNames: ["Unit Economics", "Excel"],
+      status: "draft",
+      ...over,
+    });
+    const cohortInput = (projectId: string, over: Partial<CohortInput> = {}): CohortInput => ({
+      projectId,
+      startDate: "2026-12-07",
+      endDate: "2027-01-31",
+      applicationDeadline: "2026-11-30",
+      minStudents: 5,
+      maxStudents: 10,
+      zoomLink: "https://zoom.example.com/j/999",
+      ...over,
+    });
+    const firstInstructorId = async (repo: Repository) => (await repo.listInstructorOptions())[0].id;
+
+    it("keeps a draft out of the public catalog until it is published, and archives it again", async () => {
+      const { repo } = await make();
+      const saved = await repo.saveProject(baseProject(await firstInstructorId(repo)));
+      assert.ok(saved.ok);
+      if (!saved.ok) return;
+      assert.equal(await repo.getProject("audit-fictional-coffee-roaster"), null);
+      assert.equal((await repo.listProjects({ q: "roaster", page: 1, pageSize: 10 })).total, 0);
+
+      assert.ok(await repo.setProjectStatus(saved.id, "published"));
+      const detail = await repo.getProject("audit-fictional-coffee-roaster");
+      assert.equal(detail?.title, "Audit a Fictional Coffee Roaster's Unit Economics");
+      assert.deepEqual(detail?.skills.map((s) => s.name), ["Unit Economics", "Excel"]);
+      assert.equal((await repo.listProjects({ q: "roaster", page: 1, pageSize: 10 })).total, 1);
+      assert.ok((await repo.listSkillTags()).some((t) => t.id === "unit-economics"));
+
+      assert.ok(await repo.setProjectStatus(saved.id, "archived"));
+      assert.equal(await repo.getProject("audit-fictional-coffee-roaster"), null);
+      assert.equal(await repo.setProjectStatus("prj-does-not-exist", "published"), false);
+    });
+
+    it("edits a project in place, keeping its cohorts, and refuses a duplicate or invalid slug target", async () => {
+      const { repo } = await make();
+      const existing = (await repo.listProjectsAdmin({ page: 1, pageSize: 5 })).items[0];
+      const full = (await repo.getProjectAdmin(existing.id))!;
+      const edited = await repo.saveProject({ ...full, title: "A Retitled Project For Testing" });
+      assert.ok(edited.ok && edited.id === existing.id);
+      assert.equal((await repo.getProjectAdmin(existing.id))?.title, "A Retitled Project For Testing");
+      assert.equal((await repo.listCohortsAdmin(existing.id)).length, existing.cohortCount);
+
+      const other = (await repo.listProjectsAdmin({ page: 1, pageSize: 5 })).items[1];
+      const clash = await repo.saveProject({ ...(await repo.getProjectAdmin(other.id))!, slug: full.slug });
+      assert.ok(!clash.ok && clash.fieldErrors.slug);
+
+      const badInstructor = await repo.saveProject(baseProject("ins-nope"));
+      assert.ok(!badInstructor.ok && badInstructor.fieldErrors.instructorId);
+      const badIndustry = await repo.saveProject(baseProject(await firstInstructorId(repo), { industryId: "nope" }));
+      assert.ok(!badIndustry.ok && badIndustry.fieldErrors.industryId);
+      const missing = await repo.saveProject({ ...full, id: "prj-does-not-exist" });
+      assert.ok(!missing.ok);
+    });
+
+    it("lists drafts for admins only, filters by status, and paginates", async () => {
+      const { repo } = await make(40);
+      const saved = await repo.saveProject(baseProject(await firstInstructorId(repo)));
+      assert.ok(saved.ok);
+      const drafts = await repo.listProjectsAdmin({ status: "draft", page: 1, pageSize: 10 });
+      assert.equal(drafts.total, 1);
+      assert.equal(drafts.items[0].status, "draft");
+      const all = await repo.listProjectsAdmin({ page: 1, pageSize: 10 });
+      assert.equal(all.total, 41);
+      assert.equal(all.items.length, 10);
+      assert.equal((await repo.listProjectsAdmin({ q: "coffee", page: 1, pageSize: 10 })).total, 1);
+    });
+
+    it("creates and edits cohorts, and keeps the zoom link out of public data", async () => {
+      const { repo } = await make();
+      const project = await repo.saveProject(baseProject(await firstInstructorId(repo), { status: "published" }));
+      assert.ok(project.ok);
+      if (!project.ok) return;
+      const created = await repo.saveCohort(cohortInput(project.id));
+      assert.ok(created.ok);
+      if (!created.ok) return;
+
+      const listed = await repo.listCohortsAdmin(project.id);
+      assert.equal(listed.length, 1);
+      assert.equal(listed[0].zoomLink, "https://zoom.example.com/j/999");
+      assert.equal(listed[0].seatsTaken, 0);
+
+      const detail = await repo.getProject("audit-fictional-coffee-roaster");
+      assert.equal(detail?.cohorts.length, 1);
+      assert.equal(detail?.cohorts[0].maxStudents, 10);
+      assert.ok(!JSON.stringify(detail).includes("zoom.example.com/j/999"), "zoomLink leaked");
+      assert.ok(!JSON.stringify(await repo.getApplyContext(created.id)).includes("zoom.example.com"), "zoomLink leaked");
+
+      const edited = await repo.saveCohort({ ...cohortInput(project.id), id: created.id, maxStudents: 12 });
+      assert.ok(edited.ok);
+      assert.equal((await repo.getCohortAdmin(created.id))?.maxStudents, 12);
+    });
+
+    it("refuses invalid cohort dates and capacity below the seats already taken", async () => {
+      const { repo } = await make();
+      const demo = (await repo.getCohortAdmin(DEMO_COHORT_ID))!;
+      assert.ok(demo.seatsTaken >= 9);
+      const tooSmall = await repo.saveCohort({ ...demo, maxStudents: demo.seatsTaken - 1, minStudents: 1 });
+      assert.ok(!tooSmall.ok && tooSmall.fieldErrors.maxStudents);
+      const atSeats = await repo.saveCohort({ ...demo, maxStudents: demo.seatsTaken, minStudents: 1 });
+      assert.ok(atSeats.ok);
+
+      const bad = await repo.saveCohort({
+        ...demo,
+        startDate: "2026-12-10",
+        endDate: "2026-12-01",
+        applicationDeadline: "2026-12-20",
+        minStudents: 9,
+        maxStudents: 8,
+      });
+      assert.ok(!bad.ok);
+      if (!bad.ok) {
+        assert.ok(bad.fieldErrors.endDate && bad.fieldErrors.applicationDeadline && bad.fieldErrors.minStudents);
+      }
+      const orphan = await repo.saveCohort(cohortInput("prj-does-not-exist"));
+      assert.ok(!orphan.ok);
+    });
+
+    it("creates an instructor with a new organization, rejects a duplicate slug, and lets a project use them", async () => {
+      const { repo } = await make();
+      const input: InstructorInput = {
+        slug: "dana-test-instructor",
+        name: "Dana Testwell",
+        title: "Fictional Analyst",
+        bio: "Dana is a fictional analyst created for the test suite and nothing else at all.",
+        organizationName: "Brand New Fictional Institute",
+        linkedinUrl: "",
+      };
+      const created = await repo.saveInstructor(input);
+      assert.ok(created.ok);
+      if (!created.ok) return;
+      const option = (await repo.listInstructorOptions()).find((o) => o.id === created.id);
+      assert.equal(option?.organizationName, "Brand New Fictional Institute");
+
+      const dup = await repo.saveInstructor({ ...input, name: "Someone Else" });
+      assert.ok(!dup.ok && dup.fieldErrors.slug);
+
+      // Reusing an existing organization by name does not create a second one.
+      const again = await repo.saveInstructor({ ...input, slug: "dana-two", name: "Dana Two" });
+      assert.ok(again.ok);
+
+      const project = await repo.saveProject(baseProject(created.id, { status: "published" }));
+      assert.ok(project.ok);
+      const detail = await repo.getProject("audit-fictional-coffee-roaster");
+      assert.equal(detail?.instructor.name, "Dana Testwell");
+      assert.equal(detail?.organization.name, "Brand New Fictional Institute");
+
+      const edited = await repo.saveInstructor({ ...input, id: created.id, title: "Senior Fictional Analyst" });
+      assert.ok(edited.ok);
+      assert.equal((await repo.getInstructorAdmin(created.id))?.title, "Senior Fictional Analyst");
+      assert.ok((await repo.listInstructorsAdmin(1, 500)).items.some((i) => i.id === created.id && i.projectCount === 1));
+    });
+  });
 }

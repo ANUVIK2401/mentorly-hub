@@ -10,6 +10,7 @@
  *    locks the cohort row first, so two admins cannot both take the last seat.
  *  - The clock is injected (`now`) and `submitted_at` is written explicitly, so tests are reproducible.
  */
+import { randomUUID } from "node:crypto";
 import { and, asc, count, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import {
@@ -23,16 +24,25 @@ import {
   tags,
 } from "@/db/schema";
 import {
+  cohortRuleErrors,
   deriveCohortStatus,
   notOpenMessage,
   resolveStatusChange,
   SEAT_STATUSES,
 } from "@/lib/rules";
 import { isUuid } from "@/lib/uuid";
+import { slugify } from "./seed";
 import type { AdminStats, ApplicationStatusView, ApplyContext, Repository } from "./repository";
 import {
   APPLICATION_STATUSES,
   type AdminApplicationFilter,
+  type AdminCohortEdit,
+  type AdminInstructorRow,
+  type AdminProjectRow,
+  type InstructorInput,
+  type InstructorOption,
+  type ProjectInput,
+  type SaveResult,
   type AdminApplicationRow,
   type AdminCohortRow,
   type ApplicationStatus,
@@ -189,6 +199,25 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
     const [views, skills] = await Promise.all([viewsByProject(ids), skillsByProject(ids)]);
     return rows.map((r) => toCard(r, views.get(r.id) ?? [], skills.get(r.id) ?? []));
   }
+
+  const toCohortEdit = (
+    r: CohortRow & { zoomLink: string | null },
+    counts: Map<string, CohortCounts>,
+  ): AdminCohortEdit => {
+    const v = viewOf(r, counts);
+    return {
+      id: r.id,
+      projectId: r.projectId,
+      startDate: r.startDate,
+      endDate: r.endDate,
+      applicationDeadline: r.applicationDeadline,
+      minStudents: r.minStudents,
+      maxStudents: r.maxStudents,
+      zoomLink: r.zoomLink ?? undefined,
+      status: v.status,
+      seatsTaken: v.seatsTaken,
+    };
+  };
 
   const adminRowSelect = () =>
     db
@@ -607,6 +636,265 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
         await tx.update(applications).set({ status: result.status, reviewedBy: reviewer }).where(eq(applications.id, id));
         return { ok: true, status: result.status, waitlistedBecauseFull: result.waitlistedBecauseFull };
       });
+    },
+
+    /* ------------------------------ admin editing ------------------------------ */
+
+    async listProjectsAdmin(filter): Promise<Page<AdminProjectRow>> {
+      const conds: SQL[] = [];
+      if (filter.status) conds.push(eq(projects.status, filter.status));
+      for (const t of termsOf(filter.q)) {
+        const like = likeTerm(t);
+        conds.push(or(ilike(projects.title, like), ilike(projects.slug, like), ilike(instructors.name, like))!);
+      }
+      const where = conds.length ? and(...conds) : undefined;
+      const [{ n: total }] = await db
+        .select({ n: count() })
+        .from(projects)
+        .innerJoin(instructors, eq(instructors.id, projects.instructorId))
+        .where(where);
+      const pageCount = Math.max(1, Math.ceil(total / filter.pageSize));
+      const page = Math.min(Math.max(1, filter.page), pageCount);
+      const rows = await db
+        .select({
+          id: projects.id,
+          slug: projects.slug,
+          title: projects.title,
+          status: projects.status,
+          instructorName: instructors.name,
+          industryName: tags.name,
+          cohortCount: sql<number>`(select count(*)::int from ${cohorts} where ${cohorts.projectId} = ${projects.id})`,
+        })
+        .from(projects)
+        .innerJoin(instructors, eq(instructors.id, projects.instructorId))
+        .innerJoin(tags, eq(tags.id, projects.industryId))
+        .where(where)
+        .orderBy(asc(projects.title), asc(projects.id))
+        .limit(filter.pageSize)
+        .offset((page - 1) * filter.pageSize);
+      return { items: rows, total, page, pageSize: filter.pageSize, pageCount };
+    },
+
+    async getProjectAdmin(id): Promise<ProjectInput | null> {
+      const [p] = await db
+        .select({
+          id: projects.id,
+          title: projects.title,
+          slug: projects.slug,
+          summary: projects.summary,
+          description: projects.description,
+          learningGoals: projects.learningGoals,
+          deliverable: projects.deliverable,
+          instructorId: projects.instructorId,
+          industryId: projects.industryId,
+          status: projects.status,
+        })
+        .from(projects)
+        .where(eq(projects.id, id));
+      if (!p) return null;
+      const skills = (await skillsByProject([id])).get(id) ?? [];
+      return { ...p, skillNames: skills.map((t) => t.name) };
+    },
+
+    async saveProject(input): Promise<SaveResult> {
+      try {
+        return await db.transaction(async (tx): Promise<SaveResult> => {
+          if (input.id) {
+            const [found] = await tx.select({ id: projects.id }).from(projects).where(eq(projects.id, input.id));
+            if (!found) return { ok: false, fieldErrors: {}, message: "That project no longer exists." };
+          }
+          const fieldErrors: Record<string, string> = {};
+          const [clash] = await tx.select({ id: projects.id }).from(projects).where(eq(projects.slug, input.slug));
+          if (clash && clash.id !== input.id) fieldErrors.slug = "Another project already uses this slug.";
+          const [instructor] = await tx
+            .select({ organizationId: instructors.organizationId })
+            .from(instructors)
+            .where(eq(instructors.id, input.instructorId));
+          if (!instructor) fieldErrors.instructorId = "Choose an existing instructor.";
+          const [industry] = await tx
+            .select({ id: tags.id })
+            .from(tags)
+            .where(and(eq(tags.id, input.industryId), eq(tags.type, "industry")));
+          if (!industry) fieldErrors.industryId = "Choose an existing industry.";
+          if (Object.keys(fieldErrors).length) return { ok: false, fieldErrors };
+
+          const skillIds: string[] = [];
+          const skillRows: { id: string; name: string; type: "skill" }[] = [];
+          for (const name of input.skillNames) {
+            const id = slugify(name);
+            if (!id || skillIds.includes(id)) continue;
+            skillIds.push(id);
+            skillRows.push({ id, name: name.trim(), type: "skill" });
+          }
+          if (skillRows.length) await tx.insert(tags).values(skillRows).onConflictDoNothing();
+
+          const id = input.id ?? `prj-${randomUUID().slice(0, 8)}`;
+          const values = {
+            slug: input.slug,
+            title: input.title,
+            summary: input.summary,
+            description: input.description,
+            learningGoals: input.learningGoals,
+            deliverable: input.deliverable,
+            instructorId: input.instructorId,
+            organizationId: instructor.organizationId,
+            industryId: input.industryId,
+            status: input.status,
+          };
+          if (input.id) await tx.update(projects).set(values).where(eq(projects.id, id));
+          else await tx.insert(projects).values({ id, ...values });
+
+          await tx.delete(projectTags).where(eq(projectTags.projectId, id));
+          if (skillIds.length) {
+            await tx.insert(projectTags).values(skillIds.map((tagId, position) => ({ projectId: id, tagId, position })));
+          }
+          return { ok: true, id };
+        });
+      } catch (e) {
+        if (isUniqueViolation(e)) return { ok: false, fieldErrors: { slug: "Another project already uses this slug." } };
+        throw e;
+      }
+    },
+
+    async setProjectStatus(id, status) {
+      const rows = await db.update(projects).set({ status }).where(eq(projects.id, id)).returning({ id: projects.id });
+      return rows.length > 0;
+    },
+
+    async listCohortsAdmin(projectId): Promise<AdminCohortEdit[]> {
+      const rows = await db
+        .select({ ...COHORT_COLUMNS, zoomLink: cohorts.zoomLink })
+        .from(cohorts)
+        .where(eq(cohorts.projectId, projectId))
+        .orderBy(asc(cohorts.startDate), asc(cohorts.id));
+      const counts = await countsFor(db, rows.map((r) => r.id));
+      return rows.map((r) => toCohortEdit(r, counts));
+    },
+
+    async getCohortAdmin(id) {
+      const [row] = await db
+        .select({ ...COHORT_COLUMNS, zoomLink: cohorts.zoomLink })
+        .from(cohorts)
+        .where(eq(cohorts.id, id));
+      return row ? toCohortEdit(row, await countsFor(db, [id])) : null;
+    },
+
+    async saveCohort(input): Promise<SaveResult> {
+      return db.transaction(async (tx): Promise<SaveResult> => {
+        const [project] = await tx.select({ id: projects.id }).from(projects).where(eq(projects.id, input.projectId));
+        if (!project) return { ok: false, fieldErrors: {}, message: "That project does not exist." };
+
+        let seats = 0;
+        if (input.id) {
+          const locked = await lockCohort(tx, input.id); // block concurrent accepts while capacity changes
+          if (!locked) return { ok: false, fieldErrors: {}, message: "That cohort no longer exists." };
+          seats = locked.seatsTaken;
+        }
+        const fieldErrors = cohortRuleErrors(input, seats);
+        if (Object.keys(fieldErrors).length) return { ok: false, fieldErrors };
+
+        const values = {
+          projectId: input.projectId,
+          startDate: input.startDate,
+          endDate: input.endDate,
+          applicationDeadline: input.applicationDeadline,
+          minStudents: input.minStudents,
+          maxStudents: input.maxStudents,
+          zoomLink: input.zoomLink || null,
+        };
+        if (input.id) {
+          await tx.update(cohorts).set(values).where(eq(cohorts.id, input.id));
+          return { ok: true, id: input.id };
+        }
+        const id = `coh-${randomUUID().slice(0, 8)}`;
+        await tx.insert(cohorts).values({ id, ...values });
+        return { ok: true, id };
+      });
+    },
+
+    async listInstructorsAdmin(page, pageSize): Promise<Page<AdminInstructorRow>> {
+      const [{ n: total }] = await db.select({ n: count() }).from(instructors);
+      const pageCount = Math.max(1, Math.ceil(total / pageSize));
+      const safePage = Math.min(Math.max(1, page), pageCount);
+      const rows = await db
+        .select({
+          id: instructors.id,
+          slug: instructors.slug,
+          name: instructors.name,
+          title: instructors.title,
+          organizationName: organizations.name,
+          projectCount: sql<number>`(select count(*)::int from ${projects} where ${projects.instructorId} = ${instructors.id})`,
+        })
+        .from(instructors)
+        .innerJoin(organizations, eq(organizations.id, instructors.organizationId))
+        .orderBy(asc(instructors.name), asc(instructors.id))
+        .limit(pageSize)
+        .offset((safePage - 1) * pageSize);
+      return { items: rows, total, page: safePage, pageSize, pageCount };
+    },
+
+    async getInstructorAdmin(id): Promise<InstructorInput | null> {
+      const [row] = await db
+        .select({
+          id: instructors.id,
+          slug: instructors.slug,
+          name: instructors.name,
+          title: instructors.title,
+          bio: instructors.bio,
+          organizationName: organizations.name,
+          linkedinUrl: instructors.linkedinUrl,
+        })
+        .from(instructors)
+        .innerJoin(organizations, eq(organizations.id, instructors.organizationId))
+        .where(eq(instructors.id, id));
+      return row ? { ...row, linkedinUrl: row.linkedinUrl ?? "" } : null;
+    },
+
+    async listInstructorOptions(): Promise<InstructorOption[]> {
+      return db
+        .select({ id: instructors.id, name: instructors.name, organizationName: organizations.name })
+        .from(instructors)
+        .innerJoin(organizations, eq(organizations.id, instructors.organizationId))
+        .orderBy(asc(instructors.name), asc(instructors.id));
+    },
+
+    async saveInstructor(input): Promise<SaveResult> {
+      const slugTaken: SaveResult = { ok: false, fieldErrors: { slug: "Another instructor already uses this slug." } };
+      try {
+        return await db.transaction(async (tx): Promise<SaveResult> => {
+          if (input.id) {
+            const [found] = await tx.select({ id: instructors.id }).from(instructors).where(eq(instructors.id, input.id));
+            if (!found) return { ok: false, fieldErrors: {}, message: "That instructor no longer exists." };
+          }
+          const [clash] = await tx.select({ id: instructors.id }).from(instructors).where(eq(instructors.slug, input.slug));
+          if (clash && clash.id !== input.id) return slugTaken;
+
+          const orgName = input.organizationName.trim();
+          const orgId = slugify(orgName);
+          await tx.insert(organizations).values({ id: orgId, name: orgName }).onConflictDoNothing();
+
+          const id = input.id ?? `ins-${randomUUID().slice(0, 8)}`;
+          const values = {
+            slug: input.slug,
+            name: input.name,
+            title: input.title,
+            bio: input.bio,
+            organizationId: orgId,
+            linkedinUrl: input.linkedinUrl || null,
+          };
+          if (input.id) {
+            await tx.update(instructors).set(values).where(eq(instructors.id, id));
+            // A project's organization follows its instructor.
+            await tx.update(projects).set({ organizationId: orgId }).where(eq(projects.instructorId, id));
+          } else {
+            await tx.insert(instructors).values({ id, ...values });
+          }
+          return { ok: true, id };
+        });
+      } catch (e) {
+        if (isUniqueViolation(e)) return slugTaken;
+        throw e;
+      }
     },
   };
 }

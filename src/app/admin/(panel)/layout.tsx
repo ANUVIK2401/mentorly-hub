@@ -21,6 +21,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin/cohorts" className="hover:underline">
             Cohorts
           </Link>
+          <Link href="/admin/projects" className="hover:underline">
+            Projects
+          </Link>
+          <Link href="/admin/instructors" className="hover:underline">
+            Instructors
+          </Link>
           <a href="/admin/export" className="hover:underline">
             Export to Excel
           </a>

@@ -28,6 +28,7 @@ export interface Instructor {
 }
 
 export type ProjectStatus = "draft" | "published" | "archived";
+export const PROJECT_STATUSES = ["draft", "published", "archived"] as const satisfies readonly ProjectStatus[];
 
 export interface Project {
   id: string;
@@ -217,3 +218,85 @@ export type CreateApplicationResult =
 export type StatusChangeResult =
   | { ok: true; status: ApplicationStatus; waitlistedBecauseFull: boolean }
   | { ok: false; message: string };
+
+/* ---------------------------- Admin editing (Phase 3) ---------------------------- */
+/* Admin-only shapes. Cohort `zoomLink` appears here and only here. */
+
+export interface ProjectInput {
+  id?: string;
+  title: string;
+  slug: string;
+  summary: string;
+  description: string;
+  learningGoals: string[];
+  deliverable: string;
+  instructorId: string;
+  industryId: string;
+  /** Skill tag names in display order. Unknown names become new skill tags. */
+  skillNames: string[];
+  status: ProjectStatus;
+}
+
+export interface AdminProjectRow {
+  id: string;
+  slug: string;
+  title: string;
+  status: ProjectStatus;
+  instructorName: string;
+  industryName: string;
+  cohortCount: number;
+}
+
+export interface AdminProjectFilter {
+  q?: string;
+  status?: ProjectStatus;
+  page: number;
+  pageSize: number;
+}
+
+export interface CohortInput {
+  id?: string;
+  projectId: string;
+  startDate: string;
+  endDate: string;
+  applicationDeadline: string;
+  minStudents: number;
+  maxStudents: number;
+  zoomLink?: string;
+}
+
+export interface AdminCohortEdit extends CohortInput {
+  id: string;
+  status: CohortStatus;
+  seatsTaken: number;
+}
+
+export interface InstructorInput {
+  id?: string;
+  slug: string;
+  name: string;
+  title: string;
+  bio: string;
+  /** Matched to an existing organization by name, or created. */
+  organizationName: string;
+  linkedinUrl?: string;
+}
+
+export interface AdminInstructorRow {
+  id: string;
+  slug: string;
+  name: string;
+  title: string;
+  organizationName: string;
+  projectCount: number;
+}
+
+export interface InstructorOption {
+  id: string;
+  name: string;
+  organizationName: string;
+}
+
+export type SaveResult =
+  | { ok: true; id: string }
+  | { ok: false; fieldErrors: Record<string, string>; message?: string };

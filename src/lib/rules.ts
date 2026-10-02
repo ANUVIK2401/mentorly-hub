@@ -60,3 +60,27 @@ export function resolveStatusChange(args: {
 export function applicationKey(cohortId: string, email: string): string {
   return `${cohortId}::${email.trim().toLowerCase()}`;
 }
+
+export interface CohortDates {
+  startDate: string;
+  endDate: string;
+  applicationDeadline: string;
+  minStudents: number;
+  maxStudents: number;
+}
+
+/**
+ * Field errors for a cohort being created or edited. `seatsTaken` is the current count of accepted
+ * and enrolled applications (0 for a new cohort): capacity may never drop below it, or the cohort
+ * would be over-enrolled. Every repository calls this, so the rule lives in one place.
+ */
+export function cohortRuleErrors(c: CohortDates, seatsTaken: number): Record<string, string> {
+  const errors: Record<string, string> = {};
+  if (c.applicationDeadline > c.startDate) errors.applicationDeadline = "The deadline must be on or before the start date.";
+  if (c.endDate <= c.startDate) errors.endDate = "The end date must be after the start date.";
+  if (c.minStudents > c.maxStudents) errors.minStudents = "The minimum cannot exceed the maximum.";
+  if (c.maxStudents < seatsTaken) {
+    errors.maxStudents = `Capacity cannot be below the ${seatsTaken} seat${seatsTaken === 1 ? "" : "s"} already taken.`;
+  }
+  return errors;
+}
