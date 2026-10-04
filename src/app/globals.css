@@ -2,42 +2,47 @@
 
 /*
  * Design tokens. Re-theme the whole app by editing these values.
- * Tailwind utilities (bg-paper, text-ink, border-line, bg-accent ...) read from them.
+ * Tailwind utilities (bg-paper, text-ink, border-line, bg-accent, text-gold-ink ...) read from them.
+ *
+ * Light only, by design: white surfaces, royal navy for everything interactive, gold as a quiet
+ * accent. Contrast (WCAG): ink 17.6:1, muted 7.3:1, navy 10.4:1, gold-ink 5.6:1 on white.
+ * --gold is 2.4:1 on white: hairlines, dots and borders only, never text.
  */
 :root {
-  --paper: #faf8f4;
-  --surface: #ffffff;
-  --ink: #1d1b18;
-  --muted: #625c53;
-  --line: #e6e0d6;
-  --accent: #0b5d4b;
-  --accent-ink: #ffffff;
-  --accent-soft: #e3f0ec;
-  --warn: #84560a;
-  --warn-soft: #fbf0d9;
-  --bad: #9b2c20;
-  --bad-soft: #f8e3e0;
-  --info: #2a4a8d;
-  --info-soft: #e6ecf8;
-}
+  color-scheme: light;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #141412;
-    --surface: #1c1c19;
-    --ink: #efece6;
-    --muted: #a39d92;
-    --line: #2e2d29;
-    --accent: #5cc2a6;
-    --accent-ink: #0c1f19;
-    --accent-soft: #17302a;
-    --warn: #e8bd5a;
-    --warn-soft: #33290f;
-    --bad: #f09a8d;
-    --bad-soft: #3a1f1b;
-    --info: #9bb6f0;
-    --info-soft: #1c2740;
-  }
+  --paper: #f6f7fb;
+  --surface: #ffffff;
+  --ink: #0b1736;
+  --muted: #4b5674;
+  --line: #dfe4ee;
+  --line-strong: #c9d1e1;
+
+  --accent: #1c3a8a; /* royal navy: links, buttons, selection */
+  --accent-strong: #142c6e;
+  --accent-deep: #0e1f4d;
+  --accent-ink: #ffffff;
+  --accent-soft: #eaf0fc;
+
+  --gold: #c9a14a;
+  --gold-bright: #d4b061;
+  --gold-ink: #86621a;
+  --gold-soft: #fbf4e4;
+
+  --good: #0f6b4f;
+  --good-soft: #e7f5ef;
+  --warn: #86621a;
+  --warn-soft: #fbf4e4;
+  --bad: #9b2c20;
+  --bad-soft: #fbe9e6;
+  --info: #2d5b86;
+  --info-soft: #e8f1f8;
+
+  --shadow-card: 0 1px 2px rgb(14 31 77 / 0.06), 0 1px 1px rgb(14 31 77 / 0.04);
+  --shadow-lift: 0 18px 40px -18px rgb(14 31 77 / 0.35), 0 4px 12px -4px rgb(14 31 77 / 0.12);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 160ms;
+  --duration-normal: 420ms;
 }
 
 @theme inline {
@@ -46,16 +51,25 @@
   --color-ink: var(--ink);
   --color-muted: var(--muted);
   --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
   --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-deep: var(--accent-deep);
   --color-accent-ink: var(--accent-ink);
   --color-accent-soft: var(--accent-soft);
+  --color-gold: var(--gold);
+  --color-gold-bright: var(--gold-bright);
+  --color-gold-ink: var(--gold-ink);
+  --color-gold-soft: var(--gold-soft);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
   --color-bad: var(--bad);
   --color-bad-soft: var(--bad-soft);
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
-  --font-display: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-display: ui-serif, "New York", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -64,21 +78,111 @@ html {
 }
 
 body {
+  overflow-x: clip; /* full-bleed decoration (.hero-glow) must never cause sideways scroll */
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 h1,
 h2,
 h3 {
   font-family: var(--font-display);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent-deep);
 }
 
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 6px;
+}
+
+/* ---------------------------------- motion ---------------------------------- */
+/* Transform and opacity only. Everything below is switched off for reduced motion. */
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Entrance: content fades up once when a page renders. --i staggers siblings (capped by the caller). */
+.rise-in {
+  animation: rise-in var(--duration-normal) var(--ease-out-expo) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+/* Card: lifts on hover or keyboard focus; the gold rule along the top draws in from the left. */
+.card-lift {
+  box-shadow: var(--shadow-card);
+  transition:
+    transform var(--duration-fast) var(--ease-out-expo),
+    box-shadow var(--duration-normal) var(--ease-out-expo),
+    border-color var(--duration-fast) ease;
+}
+.card-lift::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--gold), var(--gold-bright) 60%, transparent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--duration-normal) var(--ease-out-expo);
+}
+.card-lift:hover,
+.card-lift:focus-within {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lift);
+  border-color: var(--line-strong);
+}
+.card-lift:hover::before,
+.card-lift:focus-within::before {
+  transform: scaleX(1);
+}
+
+/* Soft navy and gold light behind the hero, bleeding to both window edges. Decorative only. */
+.hero-glow {
+  position: relative;
+  isolation: isolate;
+}
+.hero-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  z-index: -1;
+  background:
+    radial-gradient(56rem 24rem at 18% -6rem, rgb(28 58 138 / 0.11), transparent 70%),
+    radial-gradient(40rem 20rem at 86% 0%, rgb(201 161 74 / 0.16), transparent 70%),
+    linear-gradient(to bottom, var(--surface), var(--paper));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-in {
+    animation: none;
+  }
+  .card-lift,
+  .card-lift::before {
+    transition: none;
+  }
+  .card-lift:hover,
+  .card-lift:focus-within {
+    transform: none;
+  }
 }

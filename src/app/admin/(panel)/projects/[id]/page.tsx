@@ -100,7 +100,7 @@ export default async function EditProject({
             No cohorts yet. Students can only apply once a cohort exists.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+          <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)]">
             <table className="w-full min-w-[36rem] text-left text-sm">
               <thead className="border-b border-line text-xs uppercase tracking-wide text-muted">
                 <tr>

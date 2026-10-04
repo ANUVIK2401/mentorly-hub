@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { INITIAL_ADMIN_FORM_STATE, type AdminFormState, type FieldSpec } from "@/lib/admin-form";
 
 const control =
-  "w-full rounded-md border border-line bg-paper px-3 text-sm text-ink placeholder:text-muted aria-[invalid=true]:border-bad";
+  "w-full rounded-md border border-line-strong bg-surface px-3 text-sm text-ink placeholder:text-muted aria-[invalid=true]:border-bad";
 
 interface AdminFormProps {
   action: (prev: AdminFormState, formData: FormData) => Promise<AdminFormState>;
@@ -82,7 +82,7 @@ export function AdminForm({ action, fields, defaults, hidden = {}, submitLabel }
         <button
           type="submit"
           disabled={pending}
-          className="h-11 rounded-md bg-accent px-6 text-sm font-medium text-accent-ink hover:opacity-90 disabled:opacity-60"
+          className="h-11 rounded-lg bg-accent px-6 text-sm font-semibold text-accent-ink shadow-sm transition-colors hover:bg-accent-strong active:bg-accent-deep disabled:opacity-60"
         >
           {pending ? "Saving…" : submitLabel}
         </button>

@@ -71,7 +71,7 @@ export default async function AdminApplications({ searchParams }: { searchParams
         </p>
       ) : null}
 
-      <form method="GET" action="/admin/applications" className="flex flex-wrap items-end gap-3 rounded-xl border border-line bg-surface p-3">
+      <form method="GET" action="/admin/applications" className="flex flex-wrap items-end gap-3 rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)] p-3">
         {cohortId ? <input type="hidden" name="cohort" value={cohortId} /> : null}
         <label className="flex min-w-56 flex-1 flex-col gap-1 text-xs font-medium text-muted">
           Search name, email, school, project
@@ -79,12 +79,12 @@ export default async function AdminApplications({ searchParams }: { searchParams
             type="search"
             name="q"
             defaultValue={q}
-            className="h-10 rounded-md border border-line bg-paper px-3 text-sm text-ink"
+            className="h-10 rounded-md border border-line-strong bg-surface px-3 text-sm text-ink"
           />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-muted">
           Status
-          <select name="status" defaultValue={status ?? ""} className="h-10 rounded-md border border-line bg-paper px-2 text-sm text-ink">
+          <select name="status" defaultValue={status ?? ""} className="h-10 rounded-md border border-line-strong bg-surface px-2 text-sm text-ink">
             <option value="">All statuses</option>
             {APPLICATION_STATUSES.map((s) => (
               <option key={s} value={s}>
@@ -93,7 +93,7 @@ export default async function AdminApplications({ searchParams }: { searchParams
             ))}
           </select>
         </label>
-        <button type="submit" className="h-10 rounded-md bg-accent px-4 text-sm font-medium text-accent-ink hover:opacity-90">
+        <button type="submit" className="h-10 rounded-lg bg-accent px-4 text-sm font-semibold text-accent-ink shadow-sm transition-colors hover:bg-accent-strong active:bg-accent-deep">
           Filter
         </button>
         {status || cohortId || q ? (
@@ -108,7 +108,7 @@ export default async function AdminApplications({ searchParams }: { searchParams
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <label className="flex items-center gap-2">
             Set selected to
-            <select name="status" defaultValue="under_review" className="h-9 rounded-md border border-line bg-paper px-2">
+            <select name="status" defaultValue="under_review" className="h-9 rounded-md border border-line-strong bg-surface px-2">
               {APPLICATION_STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {APPLICATION_STATUS_LABEL[s]}
@@ -116,13 +116,13 @@ export default async function AdminApplications({ searchParams }: { searchParams
               ))}
             </select>
           </label>
-          <button type="submit" className="h-9 rounded-md bg-ink px-4 font-medium text-paper hover:opacity-90">
+          <button type="submit" className="h-9 rounded-md bg-accent px-4 font-semibold text-accent-ink shadow-sm transition-colors hover:bg-accent-strong">
             Apply to selected
           </button>
           <span className="text-muted">Accepting into a full cohort adds the student to the waitlist instead.</span>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)]">
           <table className="w-full min-w-[56rem] text-left text-sm">
             <thead className="border-b border-line text-xs uppercase tracking-wide text-muted">
               <tr>

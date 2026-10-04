@@ -25,7 +25,7 @@ export default async function AdminInstructors({ searchParams }: { searchParams:
         </div>
         <Link
           href="/admin/instructors/new"
-          className="inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-medium text-accent-ink hover:opacity-90"
+          className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-semibold text-accent-ink shadow-sm transition-colors hover:bg-accent-strong active:bg-accent-deep"
         >
           New instructor
         </Link>
@@ -36,7 +36,7 @@ export default async function AdminInstructors({ searchParams }: { searchParams:
         </p>
       ) : null}
 
-      <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+      <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)]">
         <table className="w-full min-w-[40rem] text-left text-sm">
           <thead className="border-b border-line text-xs uppercase tracking-wide text-muted">
             <tr>

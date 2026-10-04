@@ -33,7 +33,7 @@ export default async function ApplicationStatusPage({ params }: Props) {
         <p className="text-muted">Thanks, {app.studentName}. Bookmark this page to check your status.</p>
       </header>
 
-      <section className="space-y-4 rounded-xl border border-line bg-surface p-6">
+      <section className="space-y-4 rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)] p-6">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">
             <Link href={`/projects/${app.projectSlug}`} className="hover:underline">

@@ -32,8 +32,11 @@ export default async function ProjectPage({ params }: Props) {
       </nav>
 
       <header className="space-y-3">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted">{project.industry.name}</p>
-        <h1 className="max-w-3xl text-3xl font-semibold leading-tight sm:text-4xl">{project.title}</h1>
+        <p className="rise-in flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">
+          <span aria-hidden className="h-1.5 w-1.5 rotate-45 bg-gold" />
+          {project.industry.name}
+        </p>
+        <h1 className="rise-in max-w-3xl text-3xl font-semibold leading-tight sm:text-5xl">{project.title}</h1>
         <p className="max-w-3xl text-lg text-muted">{project.summary}</p>
         <div className="flex flex-wrap gap-1.5">
           {project.skills.map((s) => (
@@ -64,12 +67,12 @@ export default async function ProjectPage({ params }: Props) {
 
           <section className="space-y-3">
             <h2 className="text-xl font-semibold">What you will produce</h2>
-            <p className="max-w-prose rounded-lg border border-line bg-surface p-4">{project.deliverable}</p>
+            <p className="max-w-prose rounded-2xl border border-gold/40 bg-gold-soft p-5 leading-relaxed text-ink">{project.deliverable}</p>
           </section>
         </div>
 
-        <aside className="space-y-6 lg:sticky lg:top-6 lg:self-start">
-          <section aria-labelledby="cohorts-h" className="space-y-3 rounded-xl border border-line bg-surface p-5">
+        <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+          <section aria-labelledby="cohorts-h" className="space-y-3 rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)] p-5">
             <h2 id="cohorts-h" className="text-lg font-semibold">
               Cohorts and applications
             </h2>
@@ -92,7 +95,7 @@ export default async function ProjectPage({ params }: Props) {
                     {c.status === "open" ? (
                       <Link
                         href={`/apply/${c.id}`}
-                        className="inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-medium text-accent-ink hover:opacity-90"
+                        className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-semibold text-accent-ink shadow-sm transition-colors hover:bg-accent-strong active:bg-accent-deep"
                       >
                         Apply to this cohort
                       </Link>
@@ -103,7 +106,7 @@ export default async function ProjectPage({ params }: Props) {
             )}
           </section>
 
-          <section aria-labelledby="instructor-h" className="space-y-2 rounded-xl border border-line bg-surface p-5">
+          <section aria-labelledby="instructor-h" className="space-y-2 rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)] p-5">
             <h2 id="instructor-h" className="text-lg font-semibold">
               Your instructor
             </h2>

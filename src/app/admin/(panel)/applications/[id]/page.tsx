@@ -40,7 +40,7 @@ export default async function AdminApplication({ params }: { params: Promise<{ i
         </p>
       </div>
 
-      <dl className="grid gap-x-6 gap-y-3 rounded-xl border border-line bg-surface p-4 text-sm sm:grid-cols-2">
+      <dl className="grid gap-x-6 gap-y-3 rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)] p-4 text-sm sm:grid-cols-2">
         {facts.map(([k, v]) => (
           <div key={k} className="min-w-0">
             <dt className="text-xs uppercase tracking-wide text-muted">{k}</dt>
@@ -53,7 +53,7 @@ export default async function AdminApplication({ params }: { params: Promise<{ i
         <h2 id="statement-heading" className="text-xl font-semibold">
           Statement
         </h2>
-        <p className="whitespace-pre-wrap rounded-xl border border-line bg-surface p-4 leading-relaxed">{a.statement}</p>
+        <p className="whitespace-pre-wrap rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)] p-4 leading-relaxed">{a.statement}</p>
       </section>
 
       <section aria-labelledby="history-heading" className="space-y-2">

@@ -47,7 +47,7 @@ export default async function ApplyPage({ params }: Props) {
           <ApplyForm cohortId={cohort.id} />
         </>
       ) : (
-        <div className="rounded-xl border border-line bg-surface p-6">
+        <div className="rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)] p-6">
           <p className="font-medium">This cohort is not accepting applications.</p>
           <p className="mt-1 text-sm text-muted">
             <Link href={`/projects/${project.slug}`} className="text-accent underline">

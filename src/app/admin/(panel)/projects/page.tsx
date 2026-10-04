@@ -39,7 +39,7 @@ export default async function AdminProjects({ searchParams }: { searchParams: Pr
         </div>
         <Link
           href="/admin/projects/new"
-          className="inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-medium text-accent-ink hover:opacity-90"
+          className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-semibold text-accent-ink shadow-sm transition-colors hover:bg-accent-strong active:bg-accent-deep"
         >
           New project
         </Link>
@@ -67,7 +67,7 @@ export default async function AdminProjects({ searchParams }: { searchParams: Pr
             name="q"
             defaultValue={q}
             placeholder="Title, slug, instructor…"
-            className="h-10 w-64 rounded-md border border-line bg-paper px-3 text-sm"
+            className="h-10 w-64 rounded-md border border-line-strong bg-surface px-3 text-sm"
           />
           <button type="submit" className="h-10 rounded-md border border-line px-3 text-sm hover:border-accent">
             Search
@@ -75,7 +75,7 @@ export default async function AdminProjects({ searchParams }: { searchParams: Pr
         </form>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+      <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)]">
         <table className="w-full min-w-[48rem] text-left text-sm">
           <thead className="border-b border-line text-xs uppercase tracking-wide text-muted">
             <tr>

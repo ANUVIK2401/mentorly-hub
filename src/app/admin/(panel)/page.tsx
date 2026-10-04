@@ -22,14 +22,14 @@ export default async function AdminOverview() {
 
       <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((c) => (
-          <div key={c.label} className="rounded-xl border border-line bg-surface p-5">
+          <div key={c.label} className="rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)] p-5">
             <dt className="text-sm text-muted">{c.label}</dt>
             <dd className="mt-1 font-display text-3xl font-semibold">{c.value.toLocaleString("en-US")}</dd>
           </div>
         ))}
       </dl>
 
-      <section className="space-y-3 rounded-xl border border-line bg-surface p-5">
+      <section className="space-y-3 rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)] p-5">
         <h2 className="text-lg font-semibold">Applications by status</h2>
         <ul className="space-y-2">
           {APPLICATION_STATUSES.map((s) => (

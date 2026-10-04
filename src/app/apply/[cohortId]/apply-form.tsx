@@ -5,7 +5,7 @@ import { INITIAL_APPLY_STATE, MAX_GRAD_YEAR, MIN_GRAD_YEAR, type ApplicationForm
 import { submitApplication } from "./actions";
 
 const input =
-  "h-10 w-full rounded-md border border-line bg-paper px-3 text-sm text-ink placeholder:text-muted aria-[invalid=true]:border-bad";
+  "h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-sm text-ink placeholder:text-muted aria-[invalid=true]:border-bad";
 
 function Field({
   id,
@@ -103,7 +103,7 @@ export function ApplyForm({ cohortId }: { cohortId: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="h-11 rounded-md bg-accent px-6 text-sm font-medium text-accent-ink hover:opacity-90 disabled:opacity-60"
+        className="h-11 rounded-lg bg-accent px-6 text-sm font-semibold text-accent-ink shadow-sm transition-colors hover:bg-accent-strong active:bg-accent-deep disabled:opacity-60"
       >
         {pending ? "Submitting…" : "Submit application"}
       </button>

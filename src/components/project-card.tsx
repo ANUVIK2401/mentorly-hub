@@ -1,15 +1,24 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import type { ProjectCard as Card } from "@/data/types";
 import { formatDate, plural } from "@/lib/format";
 import { CohortStatusBadge, TagChip } from "./badges";
+
+const FEW_SEATS = 3;
+const MAX_STAGGER = 11; // entrance stagger stops growing after a dozen cards
 
 function CohortLine({ card }: { card: Card }) {
   const c = card.featuredCohort;
   if (!c) return <span className="text-muted">No cohorts scheduled</span>;
   if (c.status === "open") {
+    const few = c.seatsLeft <= FEW_SEATS;
     return (
       <span>
-        Starts {formatDate(c.startDate)} · <strong>{plural(c.seatsLeft, "seat")} left</strong>
+        Starts {formatDate(c.startDate)} ·{" "}
+        <strong className={few ? "text-gold-ink" : "text-ink"}>
+          {few ? "Only " : ""}
+          {plural(c.seatsLeft, "seat")} left
+        </strong>
       </span>
     );
   }
@@ -17,10 +26,20 @@ function CohortLine({ card }: { card: Card }) {
   return <span className="text-muted">Starts {formatDate(c.startDate)}</span>;
 }
 
-export function ProjectCard({ card, layout }: { card: Card; layout: "grid" | "list" }) {
+function IndustryLabel({ name }: { name: string }) {
+  return (
+    <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">
+      <span aria-hidden className="h-1.5 w-1.5 rotate-45 bg-gold" />
+      {name}
+    </p>
+  );
+}
+
+export function ProjectCard({ card, layout, index = 0 }: { card: Card; layout: "grid" | "list"; index?: number }) {
   const shown = card.skills.slice(0, 3);
   const extra = card.skills.length - shown.length;
   const href = `/projects/${card.slug}`;
+  const stagger = { "--i": Math.min(index, MAX_STAGGER) } as CSSProperties;
 
   const tags = (
     <div className="flex flex-wrap gap-1.5">
@@ -31,9 +50,13 @@ export function ProjectCard({ card, layout }: { card: Card; layout: "grid" | "li
     </div>
   );
 
+  // The instructor link sits above the card-wide project link (z-10), so both stay clickable.
   const byline = (
     <p className="text-sm text-muted">
-      <Link href={`/instructors/${card.instructor.slug}`} className="font-medium text-ink hover:underline">
+      <Link
+        href={`/instructors/${card.instructor.slug}`}
+        className="relative z-10 font-medium text-ink underline-offset-4 hover:text-accent hover:underline"
+      >
         {card.instructor.name}
       </Link>
       {" · "}
@@ -41,16 +64,27 @@ export function ProjectCard({ card, layout }: { card: Card; layout: "grid" | "li
     </p>
   );
 
+  // The title link stretches over the whole card, so any click on the card opens the project.
+  const title = (
+    <h3 className="text-xl font-semibold leading-snug">
+      <Link
+        href={href}
+        className="transition-colors duration-150 after:absolute after:inset-0 after:content-[''] group-hover:text-accent"
+      >
+        {card.title}
+      </Link>
+    </h3>
+  );
+
   if (layout === "list") {
     return (
-      <article className="grid gap-3 rounded-xl border border-line bg-surface p-4 sm:grid-cols-[1fr_auto] sm:items-center">
-        <div className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted">{card.industry.name}</p>
-          <h3 className="text-lg font-semibold leading-snug">
-            <Link href={href} className="hover:underline">
-              {card.title}
-            </Link>
-          </h3>
+      <article
+        style={stagger}
+        className="rise-in card-lift group relative grid gap-4 overflow-hidden rounded-2xl border border-line bg-surface p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:p-6"
+      >
+        <div className="space-y-2.5">
+          <IndustryLabel name={card.industry.name} />
+          {title}
           {byline}
           {tags}
         </div>
@@ -63,23 +97,28 @@ export function ProjectCard({ card, layout }: { card: Card; layout: "grid" | "li
   }
 
   return (
-    <article className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-5 transition-colors hover:border-accent">
+    <article
+      style={stagger}
+      className="rise-in card-lift group relative flex flex-col gap-3.5 overflow-hidden rounded-2xl border border-line bg-surface p-6"
+    >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted">{card.industry.name}</p>
+        <IndustryLabel name={card.industry.name} />
         {card.featuredCohort ? <CohortStatusBadge status={card.featuredCohort.status} /> : null}
       </div>
-      <h3 className="text-lg font-semibold leading-snug">
-        <Link href={href} className="hover:underline">
-          {card.title}
-        </Link>
-      </h3>
-      <p className="line-clamp-3 text-sm text-muted">{card.summary}</p>
+      {title}
+      <p className="line-clamp-3 text-sm leading-relaxed text-muted">{card.summary}</p>
       {tags}
-      <div className="mt-auto space-y-1 border-t border-line pt-3 text-sm">
+      <div className="mt-auto space-y-1.5 border-t border-line pt-4 text-sm">
         {byline}
-        <p>
+        <div className="flex items-center justify-between gap-3">
           <CohortLine card={card} />
-        </p>
+          <span
+            aria-hidden
+            className="text-accent opacity-0 transition duration-200 group-hover:translate-x-0.5 group-hover:opacity-100 motion-reduce:transition-none"
+          >
+            →
+          </span>
+        </div>
       </div>
     </article>
   );

@@ -42,10 +42,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               name="password"
               required
               autoComplete="current-password"
-              className="h-10 w-full rounded-md border border-line bg-paper px-3 text-sm"
+              className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-sm"
             />
           </label>
-          <button type="submit" className="h-10 w-full rounded-md bg-accent text-sm font-medium text-accent-ink hover:opacity-90">
+          <button type="submit" className="h-10 w-full rounded-lg bg-accent text-sm font-semibold text-accent-ink shadow-sm transition-colors hover:bg-accent-strong active:bg-accent-deep">
             Sign in
           </button>
         </form>
