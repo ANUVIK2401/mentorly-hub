@@ -12,9 +12,9 @@
     "test:e2e": "playwright test",
     "check": "npm run lint && npm run typecheck && npm test && npm run build && npm run test:e2e",
     "db:generate": "drizzle-kit generate",
-    "db:push": "drizzle-kit push",
-    "db:migrate": "drizzle-kit migrate",
-    "db:seed": "tsx scripts/seed-db.ts",
+    "db:push": "node --env-file-if-exists=.env.local node_modules/drizzle-kit/bin.cjs push",
+    "db:migrate": "node --env-file-if-exists=.env.local node_modules/drizzle-kit/bin.cjs migrate",
+    "db:seed": "tsx --env-file-if-exists=.env.local scripts/seed-db.ts",
     "bench": "tsx scripts/bench.ts"
   },
   "dependencies": {

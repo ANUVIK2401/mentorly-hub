@@ -19,7 +19,9 @@ export default defineConfig({
     url: `http://localhost:${PORT}/projects`,
     reuseExistingServer: false,
     timeout: 60_000,
-    env: { ADMIN_PASSWORD, SEED_COUNT: "240" },
+    // Empty database URLs keep e2e on the in-memory repository even when `vercel env pull` has put
+    // the demo database in .env.local (Next never overrides a variable that is already set).
+    env: { ADMIN_PASSWORD, SEED_COUNT: "240", DATABASE_URL: "", POSTGRES_URL: "" },
   },
   metadata: { adminPassword: ADMIN_PASSWORD },
 });

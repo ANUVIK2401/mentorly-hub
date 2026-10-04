@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
+import { databaseUrl } from "@/db/url";
 import "./globals.css";
 
 const SITE_NAME = "Mentorly Hub";
@@ -25,7 +26,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         </a>
         <div className="border-b border-line bg-accent-soft px-4 py-1.5 text-center text-xs text-ink">
           Demo build with <strong>synthetic data</strong>.{" "}
-          {process.env.DATABASE_URL ? "" : "Applications are stored in memory and may reset. "}
+          {databaseUrl() ? "" : "Applications are stored in memory and may reset. "}
           Please do not enter real personal information.
         </div>
         <header className="border-b border-line bg-surface">

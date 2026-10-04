@@ -1,7 +1,7 @@
 /**
  * npm run db:seed [-- --reset --yes-really]
  *
- * Loads the synthetic catalog into the database named by DATABASE_URL (SEED_COUNT projects, default 240).
+ * Loads the synthetic catalog into the database named by DATABASE_URL or POSTGRES_URL (SEED_COUNT projects, default 240).
  * Refuses to run on a non-empty database. --reset WIPES every table (including real applications) and
  * always needs --yes-really, because running this from a laptop against a production URL looks the same
  * as running it locally (NODE_ENV is unset). Re-run with --reset --yes-really whenever the demo's
@@ -9,12 +9,13 @@
  */
 import { sql } from "drizzle-orm";
 import { createDb } from "../src/db/client";
+import { databaseUrl } from "../src/db/url";
 import { loadSeed } from "../src/db/load-seed";
 import { generateSeed } from "../src/data/seed";
 
-const url = process.env.DATABASE_URL;
+const url = databaseUrl();
 if (!url) {
-  console.error("DATABASE_URL is not set");
+  console.error("DATABASE_URL (or POSTGRES_URL) is not set. Run `vercel env pull .env.local` or export it.");
   process.exit(1);
 }
 const reset = process.argv.includes("--reset");

@@ -16,8 +16,8 @@ This repo is a **reference build** for Prof. Ben Lee's education-platform idea. 
 ```
 npm run dev          # http://localhost:3000, admin password in dev is "admin"
 npm run bench        # query timings at 1,000 projects / ~11,900 applications
-npm run db:migrate   # needs DATABASE_URL
-npm run db:seed      # needs DATABASE_URL; add -- --reset to reseed
+npm run db:migrate   # needs DATABASE_URL or POSTGRES_URL_NON_POOLING (read from .env.local)
+npm run db:seed      # needs DATABASE_URL or POSTGRES_URL; add -- --reset --yes-really to reseed
 npm run check        # everything below, in CI order. Run before saying a task is done.
 npm run lint
 npm run typecheck
@@ -35,7 +35,7 @@ npm run db:generate  # regenerate SQL from src/db/schema.ts (no database needed)
 3. `Repository` (`src/data/repository.ts`) is the storage seam. Today: `src/data/memory.ts` over a deterministic seed (`src/data/seed.ts`).
 4. Business rules are pure functions in `src/lib/rules.ts`. **Capacity and cohort status logic lives only there.**
 5. Public pages receive DTOs (`ProjectCard`, `CohortView`...) that cannot contain student PII or Zoom links.
-6. `src/data/postgres.ts` implements the same `Repository` over Drizzle (`src/db/schema.ts`, `/drizzle`). `getRepo()` returns it when `DATABASE_URL` is set. **`tests/contract/repository.contract.ts` runs against both**: any new repository method needs a contract test that passes on both.
+6. `src/data/postgres.ts` implements the same `Repository` over Drizzle (`src/db/schema.ts`, `/drizzle`). `getRepo()` returns it when `databaseUrl()` (`src/db/url.ts`: `DATABASE_URL`, else `POSTGRES_URL`) is set. **`tests/contract/repository.contract.ts` runs against both**: any new repository method needs a contract test that passes on both.
 
 ## Rules (and why)
 1. **Never put student PII or `zoomLink` in a public DTO, page or log.** Public data goes through the DTO types in `src/data/types.ts`. Applicant data exists only in `AdminApplicationRow` and admin code paths.
@@ -75,7 +75,8 @@ npm run db:generate  # regenerate SQL from src/db/schema.ts (no database needed)
 `npm run check` passes (lint, typecheck, unit, build, e2e). The build's route table shows admin routes as `ƒ`. New behavior has a test. If you changed UI, you looked at it (screenshot), including a phone-width viewport.
 
 ## Known limitations (do not paper over these)
-- **Without `DATABASE_URL`, applications are stored in server memory** and can vanish when an instance recycles. With it they persist. A real-database run of the concurrency test (`TEST_DATABASE_URL`) and the e2e suite against Postgres have not been done yet.
+- **Without a database URL, applications are stored in server memory** and can vanish when an instance recycles. The live demo uses Supabase (Vercel integration) and persists. The concurrency test (`TEST_DATABASE_URL`, wipes its database) has not been run against a real server: it needs a separate throwaway database, never the demo one.
+- **Every new table needs `enable row level security` in its migration.** Supabase exposes `public` tables to the anon key otherwise. `tests/db.test.ts` enforces it.
 - Admin uses one shared password. Not suitable for real student data (Phase 2).
 - No instructor login, resume or image upload, or status-change emails. The confirmation email only logs (`src/lib/mailer.ts`).
 - Rate limits (`src/lib/rate-limit.ts`) are per server instance.

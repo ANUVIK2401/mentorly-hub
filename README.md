@@ -4,7 +4,7 @@ A catalog and application tracker for instructor-led projects. Students browse p
 
 This is a **reference build**: it runs on synthetic data with zero setup, deploys free on Vercel, and is structured to be built on top of with Claude Code.
 
-> **Storage.** With no `DATABASE_URL`, applications are held in server memory and can disappear when a Vercel instance recycles, so run the whole demo in one sitting. Set `DATABASE_URL` (see "Database") and everything persists in Postgres.
+> **Storage.** The live demo runs on Supabase Postgres, so applications persist. With no database URL (`DATABASE_URL` or `POSTGRES_URL`), applications are held in server memory and can disappear when a Vercel instance recycles.
 
 ## What works today
 
@@ -51,14 +51,16 @@ Then show Ben `docs/DECISIONS.md` and ask the open questions. Q3 (application fi
 ## Database
 
 ```bash
-# Neither command reads .env.local, so pass the URL in the shell.
-# Supabase: use the Session pooler string (port 5432) here; the app itself uses the Transaction pooler (6543).
-export DATABASE_URL='postgresql://...:5432/postgres'
-npm run db:migrate                # applies /drizzle
+vercel env pull .env.local         # the Vercel Supabase integration's POSTGRES_URL* variables
+npm run db:migrate                # applies /drizzle (uses POSTGRES_URL_NON_POOLING, or DATABASE_URL)
 npm run db:seed                   # loads the synthetic catalog (SEED_COUNT, default 240)
 ```
 
-The seed's cohort dates are relative to the day you seed. Re-run `npm run db:seed -- --reset --yes-really` whenever the demo's cohorts have aged out. **`--reset` deletes all data in that database**, including real applications, so it always requires `--yes-really`. Without `DATABASE_URL` the app runs on memory and needs none of this.
+The seed's cohort dates are relative to the day you seed. Re-run `npm run db:seed -- --reset --yes-really` whenever the demo's cohorts have aged out. **`--reset` deletes all data in that database**, including real applications, so it always requires `--yes-really`. Without a database URL the app runs on memory and needs none of this. Both scripts read `.env.local` (Node 22.9+); `DATABASE_URL` overrides the integration's variables.
+
+**Supabase setup used by the demo:** `vercel integration add supabase` (connected to Production and Development, not Preview). It creates `POSTGRES_URL` (pooled, port 6543) and `POSTGRES_URL_NON_POOLING`, never `DATABASE_URL`; the app accepts either (`src/db/url.ts`). Migration `0004` enables row level security on every table, because Supabase serves `public` tables through its REST API to anyone holding the public anon key. `tests/db.test.ts` fails if a new table misses it.
+
+**Careful:** after `vercel env pull`, `npm run dev` on your machine reads and writes the demo database. The e2e suite is pinned to memory regardless.
 
 `TEST_DATABASE_URL=postgres://... npm test` additionally runs a concurrency test against a real server (it wipes that database).
 
@@ -96,7 +98,7 @@ npx vercel --prod
 | `ADMIN_PASSWORD` | In production | Enables `/admin`. No default exists in production |
 | `SESSION_SECRET` | Recommended | Signs the admin cookie. Falls back to `ADMIN_PASSWORD` |
 | `SEED_COUNT` | No | Synthetic projects, 1 to 1152. Default 240 |
-| `DATABASE_URL` | For persistence | Postgres connection string. Unset means in-memory demo data |
+| `DATABASE_URL` | For persistence | Postgres connection string. Falls back to `POSTGRES_URL` (set by the Vercel Supabase integration). Neither set means in-memory demo data |
 | `SITE_URL` | No | Public origin for links in emails |
 | `MAIL_DEBUG` | No | Local only: print outgoing emails to the console |
 
@@ -146,7 +148,7 @@ tests/       unit tests and Playwright e2e
 
 ## Limitations
 
-- **Without `DATABASE_URL`, applications live in memory** and can vanish. With it, they persist.
+- **Without a database URL, applications live in memory** and can vanish. With one (the live demo has Supabase), they persist.
 - **One shared admin password.** Fine for a demo, not for real data (Phase 2).
 - No instructor logins, no resume or image upload, no status-change emails. The confirmation email only logs until a provider is chosen.
 - Rate limits are per server instance (in memory), so on Vercel the effective limit is higher than configured.

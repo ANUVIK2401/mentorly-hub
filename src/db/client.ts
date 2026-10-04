@@ -8,6 +8,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import postgres from "postgres";
 import * as schema from "./schema";
+import { databaseUrl } from "./url";
 
 export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
 
@@ -24,7 +25,7 @@ export function createDb(url: string): Db {
 }
 
 export function getDb(): Db {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL is not set");
+  const url = databaseUrl();
+  if (!url) throw new Error("DATABASE_URL (or POSTGRES_URL) is not set");
   return (globalThis.__projectHubDb ??= createDb(url));
 }

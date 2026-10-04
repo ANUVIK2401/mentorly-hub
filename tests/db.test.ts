@@ -14,6 +14,19 @@ describe("test database", () => {
     assert.equal(first.n, 1);
     await close();
   });
+
+  // On Supabase every public table is also reachable through its REST API with the public anon
+  // key. RLS with no policies closes that; the app connects as the owner, which bypasses RLS.
+  it("enables row level security on every public table", async () => {
+    const { db, close } = await createTestDb();
+    const rows = await db.execute(sql`select c.relname as name from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity
+        and c.relname <> '__drizzle_migrations'`);
+    const open = (Array.isArray(rows) ? rows : (rows as { rows: { name: string }[] }).rows) as { name: string }[];
+    assert.deepEqual(open.map((r) => r.name), [], "add `alter table ... enable row level security` in a migration");
+    await close();
+  });
 });
 
 describe("seed loader", () => {
