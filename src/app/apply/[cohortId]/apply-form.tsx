@@ -103,7 +103,7 @@ export function ApplyForm({ cohortId }: { cohortId: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="h-11 rounded-lg bg-accent px-6 text-sm font-semibold text-accent-ink shadow-sm transition-colors hover:bg-accent-strong active:bg-accent-deep disabled:opacity-60"
+        className="h-11 rounded-lg btn-primary px-6 text-sm font-semibold "
       >
         {pending ? "Submitting…" : "Submit application"}
       </button>

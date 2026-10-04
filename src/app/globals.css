@@ -38,8 +38,15 @@
   --info: #2d5b86;
   --info-soft: #e8f1f8;
 
-  --shadow-card: 0 1px 2px rgb(14 31 77 / 0.06), 0 1px 1px rgb(14 31 77 / 0.04);
-  --shadow-lift: 0 18px 40px -18px rgb(14 31 77 / 0.35), 0 4px 12px -4px rgb(14 31 77 / 0.12);
+  --shadow-card: 0 1px 2px rgb(14 31 77 / 0.05), 0 2px 8px -2px rgb(14 31 77 / 0.06);
+  --shadow-lift: 0 24px 48px -20px rgb(14 31 77 / 0.32), 0 6px 16px -6px rgb(14 31 77 / 0.12);
+  --shadow-glass: inset 0 1px 0 rgb(255 255 255 / 0.85), 0 1px 0 rgb(14 31 77 / 0.03), 0 16px 40px -22px rgb(14 31 77 / 0.35);
+
+  /* Glass material (functional layer only: header, toolbars, floating controls, primary actions). */
+  --glass-bg: rgb(255 255 255 / 0.64);
+  --glass-bg-strong: rgb(255 255 255 / 0.82);
+  --glass-edge: rgb(14 31 77 / 0.08);
+  --glass-blur: blur(24px) saturate(1.45);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --duration-fast: 160ms;
   --duration-normal: 420ms;
@@ -78,19 +85,47 @@ html {
 }
 
 body {
-  overflow-x: clip; /* full-bleed decoration (.hero-glow) must never cause sideways scroll */
-  background: var(--paper);
+  overflow-x: clip; /* full-bleed decoration must never cause sideways scroll */
+  isolation: isolate; /* own stacking context, so the z-index: -1 backdrop paints above the page colour */
+  background: transparent;
   color: var(--ink);
   font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/*
+ * Ambient backdrop: soft navy and gold light plus a faint grain, fixed behind everything.
+ * Glass needs something to blur; on flat white it would just read as grey.
+ */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(52rem 34rem at 6% -10%, rgb(28 58 138 / 0.2), transparent 65%),
+    radial-gradient(44rem 30rem at 102% 2%, rgb(201 161 74 / 0.24), transparent 65%),
+    radial-gradient(56rem 38rem at 55% 112%, rgb(28 58 138 / 0.12), transparent 70%),
+    var(--paper);
+}
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 h1,
 h2,
 h3 {
   font-family: var(--font-display);
-  letter-spacing: -0.015em;
+  letter-spacing: -0.018em;
   color: var(--ink);
 }
 
@@ -102,16 +137,77 @@ h3 {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: 8px;
+}
+
+/* -------------------------------- materials -------------------------------- */
+
+@layer components {
+  /* Regular glass: blurs and brightens what is behind it; text on it stays at full contrast. */
+  .glass {
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-edge);
+    box-shadow: var(--shadow-glass);
+  }
+
+  /* Thin glass: lighter tint for small floating pieces (chips, segmented controls). */
+  .glass-thin {
+    background: rgb(255 255 255 / 0.5);
+    -webkit-backdrop-filter: blur(14px) saturate(1.3);
+    backdrop-filter: blur(14px) saturate(1.3);
+    border: 1px solid var(--glass-edge);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.8);
+  }
+
+  /* Tinted glass for the one primary action per view: navy, with a light top edge. */
+  .btn-primary {
+    color: var(--accent-ink);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.16), rgb(255 255 255 / 0) 55%),
+      var(--accent);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.25),
+      inset 0 -1px 0 rgb(0 0 0 / 0.15),
+      0 6px 16px -6px rgb(28 58 138 / 0.55);
+    transition:
+      transform var(--duration-fast) var(--ease-out-expo),
+      box-shadow var(--duration-fast) ease,
+      background-color var(--duration-fast) ease;
+  }
+  .btn-primary:hover {
+    background-color: var(--accent-strong);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.25),
+      inset 0 -1px 0 rgb(0 0 0 / 0.15),
+      0 10px 24px -8px rgb(28 58 138 / 0.6);
+  }
+  .btn-primary:active {
+    transform: scale(0.98);
+    background-color: var(--accent-deep);
+  }
+  .btn-primary:disabled {
+    opacity: 0.6;
+    transform: none;
+  }
+
+  /* Without backdrop-filter support, glass falls back to a near-opaque surface (still legible). */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass,
+    .glass-thin {
+      background: rgb(255 255 255 / 0.96);
+    }
+  }
 }
 
 /* ---------------------------------- motion ---------------------------------- */
-/* Transform and opacity only. Everything below is switched off for reduced motion. */
+/* Transform and opacity only, except the scroll-linked header. All of it honours reduced motion. */
 
 @keyframes rise-in {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -125,52 +221,54 @@ h3 {
   animation-delay: calc(var(--i, 0) * 40ms);
 }
 
-/* Card: lifts on hover or keyboard focus; the gold rule along the top draws in from the left. */
+/* Content cards stay solid (content layer). On hover or focus they lift and a navy-to-gold edge fades in. */
 .card-lift {
   box-shadow: var(--shadow-card);
   transition:
     transform var(--duration-fast) var(--ease-out-expo),
-    box-shadow var(--duration-normal) var(--ease-out-expo),
-    border-color var(--duration-fast) ease;
+    box-shadow var(--duration-normal) var(--ease-out-expo);
 }
 .card-lift::before {
   content: "";
   position: absolute;
-  inset: 0 0 auto 0;
-  height: 2px;
+  inset: 0;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--gold), var(--gold-bright) 60%, transparent);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform var(--duration-normal) var(--ease-out-expo);
+  padding: 1px;
+  background: linear-gradient(140deg, var(--accent) 0%, rgb(28 58 138 / 0.25) 45%, var(--gold-bright) 100%);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-normal) var(--ease-out-expo);
 }
 .card-lift:hover,
 .card-lift:focus-within {
-  transform: translateY(-3px);
+  transform: translateY(-4px);
   box-shadow: var(--shadow-lift);
-  border-color: var(--line-strong);
 }
 .card-lift:hover::before,
 .card-lift:focus-within::before {
-  transform: scaleX(1);
+  opacity: 1;
 }
 
-/* Soft navy and gold light behind the hero, bleeding to both window edges. Decorative only. */
-.hero-glow {
-  position: relative;
-  isolation: isolate;
-}
-.hero-glow::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 50%;
-  width: 100vw;
-  transform: translateX(-50%);
-  z-index: -1;
-  background:
-    radial-gradient(56rem 24rem at 18% -6rem, rgb(28 58 138 / 0.11), transparent 70%),
-    radial-gradient(40rem 20rem at 86% 0%, rgb(201 161 74 / 0.16), transparent 70%),
-    linear-gradient(to bottom, var(--surface), var(--paper));
+/* Scroll edge effect: the floating header firms up (more opaque, deeper shadow) as content slides under it. */
+@supports (animation-timeline: scroll()) {
+  @keyframes header-firm {
+    to {
+      background: var(--glass-bg-strong);
+      box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 0.9),
+        0 18px 40px -20px rgb(14 31 77 / 0.4);
+    }
+  }
+  .glass-header {
+    animation: header-firm linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 160px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -178,11 +276,23 @@ h3 {
     animation: none;
   }
   .card-lift,
-  .card-lift::before {
+  .card-lift::before,
+  .btn-primary {
     transition: none;
   }
   .card-lift:hover,
-  .card-lift:focus-within {
+  .card-lift:focus-within,
+  .btn-primary:active {
     transform: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .glass-thin,
+  .glass-header {
+    background: rgb(255 255 255 / 0.97);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 }

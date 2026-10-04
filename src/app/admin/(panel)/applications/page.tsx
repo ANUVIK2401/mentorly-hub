@@ -93,7 +93,7 @@ export default async function AdminApplications({ searchParams }: { searchParams
             ))}
           </select>
         </label>
-        <button type="submit" className="h-10 rounded-lg bg-accent px-4 text-sm font-semibold text-accent-ink shadow-sm transition-colors hover:bg-accent-strong active:bg-accent-deep">
+        <button type="submit" className="h-10 rounded-lg btn-primary px-4 text-sm font-semibold">
           Filter
         </button>
         {status || cohortId || q ? (
@@ -116,7 +116,7 @@ export default async function AdminApplications({ searchParams }: { searchParams
               ))}
             </select>
           </label>
-          <button type="submit" className="h-9 rounded-md bg-accent px-4 font-semibold text-accent-ink shadow-sm transition-colors hover:bg-accent-strong">
+          <button type="submit" className="h-9 rounded-md btn-primary px-4 font-semibold">
             Apply to selected
           </button>
           <span className="text-muted">Accepting into a full cohort adds the student to the waitlist instead.</span>

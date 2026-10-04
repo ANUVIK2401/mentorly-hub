@@ -39,7 +39,7 @@ export default async function AdminProjects({ searchParams }: { searchParams: Pr
         </div>
         <Link
           href="/admin/projects/new"
-          className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-semibold text-accent-ink shadow-sm transition-colors hover:bg-accent-strong active:bg-accent-deep"
+          className="inline-flex h-10 items-center rounded-lg btn-primary px-4 text-sm font-semibold"
         >
           New project
         </Link>

@@ -33,13 +33,13 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
     `rounded-full border px-4 py-1.5 text-sm transition-colors duration-150 ${
       active
         ? "border-accent bg-accent text-accent-ink shadow-sm"
-        : "border-line bg-surface text-ink hover:border-accent hover:text-accent"
+        : "border-white/70 bg-white/55 text-ink hover:border-accent/40 hover:bg-white/90 hover:text-accent"
     }`;
   const hasFilters = Boolean(params.q || params.industry || params.tag || params.open);
 
   return (
     <div className="space-y-8">
-      <section className="hero-glow -mt-8 space-y-5 pb-6 pt-12 sm:pt-16">
+      <section className="space-y-6 pb-2 pt-8 sm:pt-14">
         <p className="rise-in flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-gold-ink">
           <span aria-hidden className="h-px w-8 bg-gold" />
           Instructor-led · 8-week cohorts
@@ -61,7 +61,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
           {VALUE_PROPS.map((v) => (
             <li
               key={v}
-              className="flex items-center gap-2 rounded-full border border-line bg-surface/80 px-3.5 py-1.5 text-ink shadow-sm backdrop-blur"
+              className="glass-thin flex items-center gap-2 rounded-full px-3.5 py-1.5 text-ink"
             >
               <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-gold" />
               {v}
@@ -70,7 +70,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
         </ul>
       </section>
 
-      <section aria-label="Filters" className="space-y-4">
+      <section aria-label="Filters" className="glass space-y-4 rounded-3xl p-3 sm:p-4">
         <nav aria-label="Industry" className="flex flex-wrap gap-2">
           <Link
             href={catalogHref(params, { industry: "", tag: "", page: 1 })}
@@ -94,7 +94,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
         <form
           method="GET"
           action="/projects"
-          className="flex flex-wrap items-end gap-3 rounded-2xl border border-line bg-surface p-4 shadow-[var(--shadow-card)]"
+          className="flex flex-wrap items-end gap-3 rounded-2xl border border-white/80 bg-white/70 p-3 sm:p-4"
         >
           {params.industry ? <input type="hidden" name="industry" value={params.industry} /> : null}
           {params.view === "list" ? <input type="hidden" name="view" value="list" /> : null}
@@ -129,7 +129,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
           </label>
           <button
             type="submit"
-            className="h-11 rounded-lg bg-accent px-5 text-sm font-semibold text-accent-ink shadow-sm transition-colors hover:bg-accent-strong active:bg-accent-deep"
+            className="btn-primary h-11 rounded-xl px-6 text-sm font-semibold"
           >
             Search
           </button>
@@ -147,13 +147,13 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
             <strong className="text-ink">{plural(result.total, "project")}</strong>
             {result.pageCount > 1 ? ` · page ${result.page} of ${result.pageCount}` : null}
           </p>
-          <div className="inline-flex overflow-hidden rounded-lg border border-line bg-surface p-0.5 text-sm" role="group" aria-label="Layout">
+          <div className="glass-thin inline-flex overflow-hidden rounded-full p-1 text-sm" role="group" aria-label="Layout">
             {(["grid", "list"] as const).map((v) => (
               <Link
                 key={v}
                 href={catalogHref(params, { view: v })}
                 aria-current={params.view === v ? "true" : undefined}
-                className={`rounded-md px-3 py-1.5 capitalize transition-colors ${params.view === v ? "bg-accent text-accent-ink" : "text-muted hover:text-accent"}`}
+                className={`rounded-full px-4 py-1.5 capitalize transition-colors duration-150 ${params.view === v ? "bg-accent text-accent-ink shadow-[inset_0_1px_0_rgb(255_255_255/0.25)]" : "text-muted hover:text-accent"}`}
               >
                 {v}
               </Link>
@@ -162,7 +162,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
         </div>
 
         {result.items.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-line-strong bg-surface p-12 text-center text-muted">
+          <div className="glass rounded-3xl p-12 text-center text-muted">
             No projects match those filters.{" "}
             <Link href="/projects" className="text-accent underline">
               Clear filters

@@ -72,7 +72,7 @@ export default async function ProjectPage({ params }: Props) {
         </div>
 
         <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
-          <section aria-labelledby="cohorts-h" className="space-y-3 rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)] p-5">
+          <section aria-labelledby="cohorts-h" className="glass space-y-3 rounded-3xl p-6">
             <h2 id="cohorts-h" className="text-lg font-semibold">
               Cohorts and applications
             </h2>
@@ -95,7 +95,7 @@ export default async function ProjectPage({ params }: Props) {
                     {c.status === "open" ? (
                       <Link
                         href={`/apply/${c.id}`}
-                        className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-semibold text-accent-ink shadow-sm transition-colors hover:bg-accent-strong active:bg-accent-deep"
+                        className="inline-flex h-10 items-center rounded-lg btn-primary px-4 text-sm font-semibold"
                       >
                         Apply to this cohort
                       </Link>

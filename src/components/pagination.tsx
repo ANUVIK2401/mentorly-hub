@@ -16,11 +16,11 @@ export function Pagination({
   const pages = new Set([1, pageCount, page - 1, page, page + 1].filter((p) => p >= 1 && p <= pageCount));
   const sorted = [...pages].sort((a, b) => a - b);
 
-  const item = "inline-flex h-9 min-w-9 items-center justify-center rounded-md border px-2 text-sm";
+  const item = "inline-flex h-9 min-w-9 items-center justify-center rounded-full px-3 text-sm transition-colors duration-150";
   return (
-    <nav aria-label="Pagination" className="mt-8 flex flex-wrap items-center justify-center gap-1.5">
+    <nav aria-label="Pagination" className="glass mx-auto mt-10 flex w-fit flex-wrap items-center justify-center gap-1 rounded-full p-1.5">
       {page > 1 ? (
-        <Link href={hrefFor(page - 1)} className={`${item} border-line bg-surface hover:border-accent`}>
+        <Link href={hrefFor(page - 1)} className={`${item} text-ink hover:bg-white/80 hover:text-accent`}>
           Previous
         </Link>
       ) : null}
@@ -28,18 +28,18 @@ export function Pagination({
         <span key={p} className="contents">
           {i > 0 && p - sorted[i - 1] > 1 ? <span className="px-1 text-muted">…</span> : null}
           {p === page ? (
-            <span aria-current="page" className={`${item} border-accent bg-accent text-accent-ink`}>
+            <span aria-current="page" className={`${item} bg-accent font-semibold text-accent-ink shadow-[inset_0_1px_0_rgb(255_255_255/0.25)]`}>
               {p}
             </span>
           ) : (
-            <Link href={hrefFor(p)} className={`${item} border-line bg-surface hover:border-accent`}>
+            <Link href={hrefFor(p)} className={`${item} text-ink hover:bg-white/80 hover:text-accent`}>
               {p}
             </Link>
           )}
         </span>
       ))}
       {page < pageCount ? (
-        <Link href={hrefFor(page + 1)} className={`${item} border-line bg-surface hover:border-accent`}>
+        <Link href={hrefFor(page + 1)} className={`${item} text-ink hover:bg-white/80 hover:text-accent`}>
           Next
         </Link>
       ) : null}

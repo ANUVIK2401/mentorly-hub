@@ -28,8 +28,8 @@ function CohortLine({ card }: { card: Card }) {
 
 function IndustryLabel({ name }: { name: string }) {
   return (
-    <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">
-      <span aria-hidden className="h-1.5 w-1.5 rotate-45 bg-gold" />
+    <p className="flex min-w-0 items-start gap-2 text-[11px] font-semibold uppercase leading-tight tracking-[0.14em] text-accent">
+      <span aria-hidden className="mt-[3px] h-1.5 w-1.5 shrink-0 rotate-45 bg-gold" />
       {name}
     </p>
   );
@@ -101,7 +101,7 @@ export function ProjectCard({ card, layout, index = 0 }: { card: Card; layout: "
       style={stagger}
       className="rise-in card-lift group relative flex flex-col gap-3.5 overflow-hidden rounded-2xl border border-line bg-surface p-6"
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-start justify-between gap-3">
         <IndustryLabel name={card.industry.name} />
         {card.featuredCohort ? <CohortStatusBadge status={card.featuredCohort.status} /> : null}
       </div>
