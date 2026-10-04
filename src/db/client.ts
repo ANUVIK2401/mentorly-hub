@@ -10,6 +10,8 @@ import postgres from "postgres";
 import * as schema from "./schema";
 import { databaseUrl } from "./url";
 
+const POOL_SIZE = 5;
+
 export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
 
 declare global {
@@ -19,9 +21,9 @@ declare global {
 
 export function createDb(url: string): Db {
   // prepare: false is required behind Supabase's transaction pooler (port 6543), which does not
-  // support prepared statements. max: 1 because each serverless instance handles one request at a
-  // time and the pooler does the real pooling.
-  return drizzle(postgres(url, { prepare: false, max: 1 }), { schema });
+  // support prepared statements. Vercel (Fluid compute) sends several requests to one instance at
+  // once, so a single connection made them queue; the pooler still does the real pooling.
+  return drizzle(postgres(url, { prepare: false, max: POOL_SIZE }), { schema });
 }
 
 export function getDb(): Db {

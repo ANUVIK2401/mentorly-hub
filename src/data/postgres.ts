@@ -33,6 +33,7 @@ import {
 } from "@/lib/rules";
 import { isUuid } from "@/lib/uuid";
 import { slugify } from "./seed";
+import { byCatalogOrder, featuredCohort, paginate, searchTerms, STATUS_RANK } from "./shared";
 import type { AdminStats, ApplicationStatusView, ApplyContext, Repository } from "./repository";
 import {
   APPLICATION_STATUSES,
@@ -48,7 +49,6 @@ import {
   type AdminApplicationRow,
   type AdminCohortRow,
   type ApplicationStatus,
-  type CohortStatus,
   type CohortView,
   type CreateApplicationResult,
   type InstructorCard,
@@ -62,17 +62,8 @@ import {
 
 type Executor = Pick<Db, "select" | "insert" | "update" | "execute">;
 
-const STATUS_RANK: Record<CohortStatus, number> = { open: 0, full: 1, closed: 2, completed: 3 };
 const UNIQUE_VIOLATION = "23505";
 
-function paginate<T>(all: T[], page: number, pageSize: number): Page<T> {
-  const pageCount = Math.max(1, Math.ceil(all.length / pageSize));
-  const safePage = Math.min(Math.max(1, page), pageCount);
-  const start = (safePage - 1) * pageSize;
-  return { items: all.slice(start, start + pageSize), total: all.length, page: safePage, pageSize, pageCount };
-}
-
-const termsOf = (q?: string) => (q ?? "").toLowerCase().split(/\s+/).filter(Boolean);
 const likeTerm = (t: string) => `%${t.replace(/[\\%_]/g, "\\$&")}%`;
 const isUniqueViolation = (e: unknown): boolean => {
   const err = e as { code?: string; cause?: { code?: string } };
@@ -117,14 +108,6 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
     const taken = counts.get(c.id)?.seats ?? 0;
     return { ...c, status: deriveCohortStatus(c, taken, now()), seatsTaken: taken, seatsLeft: Math.max(0, c.maxStudents - taken) };
   };
-
-  /** Open first (soonest), then full/closed, then the most recent completed. */
-  const featured = (views: CohortView[]): CohortView | undefined =>
-    [...views].sort(
-      (a, b) =>
-        STATUS_RANK[a.status] - STATUS_RANK[b.status] ||
-        (a.status === "completed" ? b.startDate.localeCompare(a.startDate) : a.startDate.localeCompare(b.startDate)),
-    )[0];
 
   /** Cohort views grouped by project id, sorted by start date. */
   async function viewsByProject(projectIds: string[]): Promise<Map<string, CohortView[]>> {
@@ -192,7 +175,7 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
     organization: { name: p.organizationName },
     industry: { id: p.industryId, name: p.industryName, type: "industry" },
     skills,
-    featuredCohort: featured(views),
+    featuredCohort: featuredCohort(views),
     applicationsOpen: views.some((v) => v.status === "open"),
   });
 
@@ -249,7 +232,7 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
     const conds: SQL[] = [];
     if (f.status) conds.push(eq(applications.status, f.status));
     if (f.cohortId) conds.push(eq(applications.cohortId, f.cohortId));
-    for (const t of termsOf(f.q)) {
+    for (const t of searchTerms(f.q)) {
       const like = likeTerm(t);
       conds.push(
         or(
@@ -322,7 +305,7 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
           sql`exists (select 1 from ${projectTags} where ${projectTags.projectId} = ${projects.id} and ${projectTags.tagId} = ${q.tag})`,
         );
       }
-      for (const t of termsOf(q.q)) {
+      for (const t of searchTerms(q.q)) {
         const like = likeTerm(t);
         conds.push(
           or(
@@ -335,36 +318,42 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
           )!,
         );
       }
-      const rows = await projectSelect().where(and(...conds));
+      // Only id and title for the whole filtered set; full rows are fetched for the page alone.
+      const rows = await db
+        .select({ id: projects.id, title: projects.title })
+        .from(projects)
+        .innerJoin(instructors, eq(instructors.id, projects.instructorId))
+        .innerJoin(organizations, eq(organizations.id, projects.organizationId))
+        .innerJoin(tags, eq(tags.id, projects.industryId))
+        .where(and(...conds));
 
       // ponytail: derives status for the whole filtered set in memory. Fine below ~10,000 projects;
       // beyond that, page in SQL by a precomputed ordering.
       const views = await viewsByProject(rows.map((r) => r.id));
       const matches = rows
-        .map((p) => ({ p, views: views.get(p.id) ?? [], top: featured(views.get(p.id) ?? []) }))
+        .map((r) => ({ ...r, views: views.get(r.id) ?? [], top: featuredCohort(views.get(r.id) ?? []) }))
         .filter((m) => !q.openOnly || m.views.some((v) => v.status === "open"));
-      matches.sort(
-        (a, b) =>
-          (a.top ? STATUS_RANK[a.top.status] : 9) - (b.top ? STATUS_RANK[b.top.status] : 9) ||
-          (a.top?.startDate ?? "").localeCompare(b.top?.startDate ?? "") ||
-          a.p.title.localeCompare(b.p.title),
-      );
+      matches.sort(byCatalogOrder);
       const pageData = paginate(matches, q.page, q.pageSize);
-      const pageRows = pageData.items.map((m) => m.p);
-      const skills = await skillsByProject(pageRows.map((r) => r.id));
+      const pageIds = pageData.items.map((m) => m.id);
+      const [full, skills] = await Promise.all([
+        pageIds.length ? projectSelect().where(inArray(projects.id, pageIds)) : Promise.resolve([]),
+        skillsByProject(pageIds),
+      ]);
+      const byId = new Map(full.map((r) => [r.id, r]));
       return {
         ...pageData,
-        items: pageData.items.map((m) => toCard(m.p, m.views, skills.get(m.p.id) ?? [])),
+        items: pageData.items.map((m) => toCard(byId.get(m.id)!, m.views, skills.get(m.id) ?? [])),
       };
     },
 
     async getProject(slug): Promise<ProjectDetail | null> {
       const [p] = await projectSelect().where(and(eq(projects.slug, slug), eq(projects.status, "published")));
       if (!p) return null;
-      const [card] = await cardsFor([p]);
-      const views = (await viewsByProject([p.id])).get(p.id) ?? [];
+      const [viewMap, skillMap] = await Promise.all([viewsByProject([p.id]), skillsByProject([p.id])]);
+      const views = viewMap.get(p.id) ?? [];
       return {
-        ...card,
+        ...toCard(p, views, skillMap.get(p.id) ?? []),
         description: p.description,
         learningGoals: p.learningGoals,
         deliverable: p.deliverable,
@@ -695,7 +684,7 @@ export function createPostgresRepository(db: Db, now: () => Date = () => new Dat
     async listProjectsAdmin(filter): Promise<Page<AdminProjectRow>> {
       const conds: SQL[] = [];
       if (filter.status) conds.push(eq(projects.status, filter.status));
-      for (const t of termsOf(filter.q)) {
+      for (const t of searchTerms(filter.q)) {
         const like = likeTerm(t);
         conds.push(or(ilike(projects.title, like), ilike(projects.slug, like), ilike(instructors.name, like))!);
       }

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "vercel-build": "node scripts/migrate-on-deploy.mjs && next build",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
@@ -15,6 +16,7 @@
     "db:push": "node --env-file-if-exists=.env.local node_modules/drizzle-kit/bin.cjs push",
     "db:migrate": "node --env-file-if-exists=.env.local node_modules/drizzle-kit/bin.cjs migrate",
     "db:seed": "tsx --env-file-if-exists=.env.local scripts/seed-db.ts",
+    "db:refresh-dates": "tsx --env-file-if-exists=.env.local scripts/refresh-dates.ts",
     "bench": "tsx scripts/bench.ts"
   },
   "dependencies": {

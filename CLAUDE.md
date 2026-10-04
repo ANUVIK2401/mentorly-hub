@@ -18,6 +18,7 @@ npm run dev          # http://localhost:3000, admin password in dev is "admin"
 npm run bench        # query timings at 1,000 projects / ~11,900 applications
 npm run db:migrate   # needs DATABASE_URL or POSTGRES_URL_NON_POOLING (read from .env.local)
 npm run db:seed      # needs DATABASE_URL or POSTGRES_URL; add -- --reset --yes-really to reseed
+npm run db:refresh-dates  # move the seeded demo's dates to today, deletes nothing (run before a demo)
 npm run check        # everything below, in CI order. Run before saying a task is done.
 npm run lint
 npm run typecheck
@@ -72,10 +73,10 @@ npm run db:generate  # regenerate SQL from src/db/schema.ts (no database needed)
 | Send an email | Build a `Mail` in `src/lib/mailer.ts`, send with `sendSafely()` inside `after()` |
 
 ## Definition of done
-`npm run check` passes (lint, typecheck, unit, build, e2e). The build's route table shows admin routes as `ƒ`. New behavior has a test. If you changed UI, you looked at it (screenshot), including a phone-width viewport.
+`npm run check` passes (lint, typecheck, unit, build, e2e); GitHub Actions runs it on every push (`.github/workflows/check.yml`). The build's route table shows admin routes as `ƒ`. New behavior has a test. If you changed UI, you looked at it (screenshot), including a phone-width viewport.
 
 ## Known limitations (do not paper over these)
-- **Without a database URL, applications are stored in server memory** and can vanish when an instance recycles. The live demo uses Supabase (Vercel integration) and persists. The concurrency test (`TEST_DATABASE_URL`, wipes its database) has not been run against a real server: it needs a separate throwaway database, never the demo one.
+- **Without a database URL, applications are stored in server memory** and can vanish when an instance recycles. The live demo uses Supabase (Vercel integration) and persists. Production deploys apply migrations first (`vercel-build`). The race test and e2e passed on a local Postgres 17 (README, "Real-Postgres tests"); CI still runs them on memory and PGlite only.
 - **Every new table needs `enable row level security` in its migration.** Supabase exposes `public` tables to the anon key otherwise. `tests/db.test.ts` enforces it.
 - Admin uses one shared password. Not suitable for real student data (Phase 2).
 - No instructor login, resume or image upload, or status-change emails. The confirmation email only logs (`src/lib/mailer.ts`).

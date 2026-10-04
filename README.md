@@ -54,15 +54,26 @@ Then show Ben `docs/DECISIONS.md` and ask the open questions. Q3 (application fi
 vercel env pull .env.local         # the Vercel Supabase integration's POSTGRES_URL* variables
 npm run db:migrate                # applies /drizzle (uses POSTGRES_URL_NON_POOLING, or DATABASE_URL)
 npm run db:seed                   # loads the synthetic catalog (SEED_COUNT, default 240)
+npm run db:refresh-dates          # moves the demo's dates to today; deletes nothing
 ```
 
-The seed's cohort dates are relative to the day you seed. Re-run `npm run db:seed -- --reset --yes-really` whenever the demo's cohorts have aged out. **`--reset` deletes all data in that database**, including real applications, so it always requires `--yes-really`. Without a database URL the app runs on memory and needs none of this. Both scripts read `.env.local` (Node 22.9+); `DATABASE_URL` overrides the integration's variables.
+The seed's cohort dates are relative to the day you seed, so the demo ages: after a few weeks the open cohorts are running or closed. **Run `npm run db:refresh-dates` before a demo.** It regenerates the deterministic seed for today and copies only the dates onto the seeded ids; rows created in the app and every status change are kept. `npm run db:seed -- --reset --yes-really` is the other option, and **`--reset` deletes all data in that database**, including real applications. Without a database URL the app runs on memory and needs none of this. Both scripts read `.env.local` (Node 22.9+); `DATABASE_URL` overrides the integration's variables.
 
 **Supabase setup used by the demo:** `vercel integration add supabase` (connected to Production and Development, not Preview). It creates `POSTGRES_URL` (pooled, port 6543) and `POSTGRES_URL_NON_POOLING`, never `DATABASE_URL`; the app accepts either (`src/db/url.ts`). Migration `0004` enables row level security on every table, because Supabase serves `public` tables through its REST API to anyone holding the public anon key. `tests/db.test.ts` fails if a new table misses it.
 
+**Migrations run on deploy.** Vercel uses the `vercel-build` script: `scripts/migrate-on-deploy.mjs` applies pending `/drizzle` migrations to the production database before `next build` (preview builds skip it). A failed migration fails the build, so the previous deployment keeps serving. Migration `0005` also revokes every privilege of Supabase's public API roles.
+
 **Careful:** after `vercel env pull`, `npm run dev` on your machine reads and writes the demo database. The e2e suite is pinned to memory regardless.
 
-`TEST_DATABASE_URL=postgres://... npm test` additionally runs a concurrency test against a real server (it wipes that database).
+**Real-Postgres tests** (never against the demo database; both write to it):
+
+```bash
+brew install postgresql@17   # or Docker; any throwaway server
+TEST_DATABASE_URL=postgres://postgres@localhost:5432/hub_test npm test          # adds the concurrent-accept race test (wipes hub_test)
+E2E_DATABASE_URL=postgres://postgres@localhost:5432/hub_e2e npm run test:e2e    # e2e on Postgres; migrate and seed hub_e2e first
+```
+
+Both passed on Postgres 17 on 2026-10-04 (race test 5 of 5 runs).
 
 ## Deploy free on Vercel
 

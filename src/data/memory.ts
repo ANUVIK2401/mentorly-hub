@@ -12,6 +12,7 @@ import { slugify } from "./seed";
 import { applicationKey, cohortRuleErrors, deriveCohortStatus, notOpenMessage, occupiesSeat, resolveStatusChange } from "@/lib/rules";
 import type { AdminStats, ApplicationStatusView, ApplyContext, Repository } from "./repository";
 import type { SeedData } from "./seed";
+import { byCatalogOrder, featuredCohort, paginate, searchTerms, STATUS_RANK } from "./shared";
 import {
   APPLICATION_STATUSES,
   type AdminApplicationDetail,
@@ -29,7 +30,6 @@ import {
   type Application,
   type ApplicationStatus,
   type Cohort,
-  type CohortStatus,
   type CohortView,
   type CreateApplicationInput,
   type CreateApplicationResult,
@@ -44,20 +44,6 @@ import {
   type StatusChangeResult,
 } from "./types";
 
-const STATUS_RANK: Record<CohortStatus, number> = { open: 0, full: 1, closed: 2, completed: 3 };
-
-function paginate<T>(all: T[], page: number, pageSize: number): Page<T> {
-  const pageCount = Math.max(1, Math.ceil(all.length / pageSize));
-  const safePage = Math.min(Math.max(1, page), pageCount);
-  const start = (safePage - 1) * pageSize;
-  return {
-    items: all.slice(start, start + pageSize),
-    total: all.length,
-    page: safePage,
-    pageSize,
-    pageCount,
-  };
-}
 
 export function createMemoryRepository(seed: SeedData, now: () => Date = () => new Date()): Repository {
   const industries = new Map(seed.industries.map((t) => [t.id, t]));
@@ -141,16 +127,6 @@ export function createMemoryRepository(seed: SeedData, now: () => Date = () => n
   const viewsFor = (projectId: string): CohortView[] =>
     (cohortsByProject.get(projectId) ?? []).map(cohortView).sort((a, b) => a.startDate.localeCompare(b.startDate));
 
-  /** Open first (soonest), then full/closed, then the most recent completed. */
-  const featured = (views: CohortView[]): CohortView | undefined => {
-    if (views.length === 0) return undefined;
-    return [...views].sort(
-      (a, b) =>
-        STATUS_RANK[a.status] - STATUS_RANK[b.status] ||
-        (a.status === "completed" ? b.startDate.localeCompare(a.startDate) : a.startDate.localeCompare(b.startDate)),
-    )[0];
-  };
-
   const toCard = (p: Project, views = viewsFor(p.id)): ProjectCard => {
     const ins = instructorsById.get(p.instructorId)!;
     return {
@@ -161,7 +137,7 @@ export function createMemoryRepository(seed: SeedData, now: () => Date = () => n
       organization: { name: orgs.get(p.organizationId)!.name },
       industry: industries.get(p.industryId)!,
       skills: p.skillTagIds.map((id) => skills.get(id)!).filter(Boolean),
-      featuredCohort: featured(views),
+      featuredCohort: featuredCohort(views),
       applicationsOpen: views.some((v) => v.status === "open"),
     };
   };
@@ -209,7 +185,7 @@ export function createMemoryRepository(seed: SeedData, now: () => Date = () => n
   };
 
   const filteredApplications = (f: Omit<AdminApplicationFilter, "page" | "pageSize">): AdminApplicationRow[] => {
-    const terms = (f.q ?? "").toLowerCase().split(/\s+/).filter(Boolean);
+    const terms = searchTerms(f.q);
     const rows: AdminApplicationRow[] = [];
     for (const a of applications.values()) {
       if (f.status && a.status !== f.status) continue;
@@ -244,8 +220,8 @@ export function createMemoryRepository(seed: SeedData, now: () => Date = () => n
     },
 
     async listProjects(q: ProjectQuery) {
-      const terms = (q.q ?? "").toLowerCase().split(/\s+/).filter(Boolean);
-      const matches: { p: Project; views: CohortView[]; top?: CohortView }[] = [];
+      const terms = searchTerms(q.q);
+      const matches: { p: Project; title: string; views: CohortView[]; top?: CohortView }[] = [];
       for (const p of published) {
         if (q.industry && p.industryId !== q.industry) continue;
         if (q.tag && !p.skillTagIds.includes(q.tag)) continue;
@@ -255,14 +231,9 @@ export function createMemoryRepository(seed: SeedData, now: () => Date = () => n
         }
         const views = viewsFor(p.id);
         if (q.openOnly && !views.some((v) => v.status === "open")) continue;
-        matches.push({ p, views, top: featured(views) });
+        matches.push({ p, title: p.title, views, top: featuredCohort(views) });
       }
-      matches.sort(
-        (a, b) =>
-          (a.top ? STATUS_RANK[a.top.status] : 9) - (b.top ? STATUS_RANK[b.top.status] : 9) ||
-          (a.top?.startDate ?? "").localeCompare(b.top?.startDate ?? "") ||
-          a.p.title.localeCompare(b.p.title),
-      );
+      matches.sort(byCatalogOrder);
       const pageData = paginate(matches, q.page, q.pageSize);
       return { ...pageData, items: pageData.items.map((m) => toCard(m.p, m.views)) };
     },
@@ -456,7 +427,7 @@ export function createMemoryRepository(seed: SeedData, now: () => Date = () => n
     /* ------------------------------ admin editing ------------------------------ */
 
     async listProjectsAdmin(filter): Promise<Page<AdminProjectRow>> {
-      const terms = (filter.q ?? "").toLowerCase().split(/\s+/).filter(Boolean);
+      const terms = searchTerms(filter.q);
       const rows = [...projectsById.values()]
         .filter((p) => !filter.status || p.status === filter.status)
         .map((p) => ({

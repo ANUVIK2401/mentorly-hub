@@ -1,0 +1,27 @@
+# Runs the full definition of done (lint, typecheck, unit, build, e2e) on every push and pull
+# request. Vercel's build only compiles, so this is the only thing that stops a broken commit.
+# Make it a required check on main: Settings > Branches > Branch protection rules.
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24 # matches the Vercel project
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run check

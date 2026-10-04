@@ -21,7 +21,9 @@ export default defineConfig({
     timeout: 60_000,
     // Empty database URLs keep e2e on the in-memory repository even when `vercel env pull` has put
     // the demo database in .env.local (Next never overrides a variable that is already set).
-    env: { ADMIN_PASSWORD, SEED_COUNT: "240", DATABASE_URL: "", POSTGRES_URL: "" },
+    // E2E_DATABASE_URL runs the suite against a throwaway Postgres instead: migrate and seed it first,
+    // and never point it at the demo database (the tests create projects and applications).
+    env: { ADMIN_PASSWORD, SEED_COUNT: "240", DATABASE_URL: process.env.E2E_DATABASE_URL ?? "", POSTGRES_URL: "" },
   },
   metadata: { adminPassword: ADMIN_PASSWORD },
 });

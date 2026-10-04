@@ -53,15 +53,14 @@ export async function submitApplication(_prev: ApplyState, formData: FormData): 
     return { status: "error", formError: result.message, fieldErrors: {}, values };
   }
 
-  // After the response, so a slow or failing mail transport never delays or fails the application.
-  const projectTitle = (await repo.getApplyContext(cid))?.project.title ?? "your project";
-  const mail = applicationReceivedMail({
-    to: result.application.student.email,
-    name: result.application.student.name,
-    projectTitle,
-    applicationId: result.application.id,
+  // After the response, so the title lookup and a slow or failing mail transport never delay or
+  // fail the application.
+  const { id, student: saved } = result.application;
+  after(async () => {
+    const context = await repo.getApplyContext(cid).catch(() => null);
+    const projectTitle = context?.project.title ?? "your project";
+    await sendSafely(applicationReceivedMail({ to: saved.email, name: saved.name, projectTitle, applicationId: id }));
   });
-  after(() => sendSafely(mail));
 
   redirect(`/application/${result.application.id}`);
 }
