@@ -175,11 +175,12 @@ export function generateSeed(opts: { projectCount: number; now: Date; seed?: num
     const skillIds = shuffled.slice(0, 3 + int(3)).map(slugify);
     const skillNames = skillIds.map((id) => skillMap.get(id)!.name);
 
+    const deliverable = pick(industry.deliverables);
     const project: Project = {
       id: `prj-${i + 1}`,
       slug: slugify(title),
       title,
-      summary: `A hands-on 8-week project: ${verbLower} ${subject}, with weekly live Zoom workshops and feedback from an industry practitioner.`,
+      summary: `You finish with ${deliverable[0].toLowerCase()}${deliverable.slice(1)}, built with ${skillNames[0]} and ${skillNames[1]}.`,
       description:
         `You will ${verbLower} ${subject} from first principles. The brief is realistic and deliberately open-ended: part of the work is deciding what to measure, what to ignore, and how to defend your choices.\n\n` +
         `Each week starts with a live Zoom workshop led by ${instructor.name}, followed by working sessions where you apply the ideas to your own deliverable. By week 8 you will have a finished piece you can show to employers and admissions committees.`,
@@ -190,7 +191,7 @@ export function generateSeed(opts: { projectCount: number; now: Date; seed?: num
         "Give and respond to peer feedback in weekly live workshops",
         "Document your process so a reviewer could reproduce it",
       ],
-      deliverable: pick(industry.deliverables),
+      deliverable,
       instructorId: instructor.id,
       organizationId: org.id,
       industryId: industry.id,

@@ -51,7 +51,9 @@ Then show Ben `docs/DECISIONS.md` and ask the open questions. Q3 (application fi
 ## Database
 
 ```bash
-cp .env.example .env.local        # set DATABASE_URL (pooled connection string)
+# Neither command reads .env.local, so pass the URL in the shell.
+# Supabase: use the Session pooler string (port 5432) here; the app itself uses the Transaction pooler (6543).
+export DATABASE_URL='postgresql://...:5432/postgres'
 npm run db:migrate                # applies /drizzle
 npm run db:seed                   # loads the synthetic catalog (SEED_COUNT, default 240)
 ```
@@ -62,7 +64,7 @@ The seed's cohort dates are relative to the day you seed. Re-run `npm run db:see
 
 ## Deploy free on Vercel
 
-I verified the production build and `next start` locally. **I could not deploy to Vercel from my environment**, so these steps are untested end to end. They are the standard flow for a Next.js app.
+Deployed and smoke-tested at https://mentorly-hub.vercel.app (GitHub integration: every push to `main` deploys to production, other branches get preview URLs).
 
 **From GitHub (recommended)**
 1. Push this folder to a new GitHub repository.
@@ -70,7 +72,7 @@ I verified the production build and `next start` locally. **I could not deploy t
 3. Before deploying, add environment variables:
    - `ADMIN_PASSWORD`: choose a strong password. **Required.** Without it `/admin` is disabled in production by design.
    - `SESSION_SECRET`: output of `openssl rand -hex 32`. Recommended.
-   - `DATABASE_URL`: your **pooled** Postgres connection string, for persistence. Run `npm run db:migrate && npm run db:seed` against it once, from your machine.
+   - `DATABASE_URL`: your **pooled** Postgres connection string (Supabase Transaction pooler, port 6543), for persistence. Run `npm run db:migrate && npm run db:seed` against it once, from your machine (see "Database").
    - `SITE_URL`: your public origin, used in email links (optional on Vercel).
    - `SEED_COUNT`: optional, `1000` to show scale.
 4. Deploy. Open `/projects`, then `/admin/login`.

@@ -29,12 +29,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           Please do not enter real personal information.
         </div>
         <header className="border-b border-line bg-surface">
-          <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-            <Link href="/projects" className="flex items-center gap-2 font-display text-xl font-semibold">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
+            <Link href="/projects" className="flex shrink-0 items-center gap-2 whitespace-nowrap font-display text-lg font-semibold sm:text-xl">
               <span aria-hidden className="inline-block h-5 w-5 rounded-md bg-accent" />
               {SITE_NAME}
             </Link>
-            <nav aria-label="Main" className="flex items-center gap-5 text-sm">
+            <nav aria-label="Main" className="flex items-center gap-4 text-sm sm:gap-5">
               <Link href="/projects" className="hover:underline">
                 Projects
               </Link>
